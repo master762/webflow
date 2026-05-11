@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import {
+  getMaterialByPath,
+  getMaterialHref,
+  getMaterialNeighbors,
+} from "@/app/data/materials";
 
 export default function MaterialDetailPage() {
   const [activeSection, setActiveSection] = useState("intro");
@@ -17,7 +22,14 @@ export default function MaterialDetailPage() {
   >([]);
 
   const params = useParams();
-  const materialId = params.id as string;
+  const categoryParam = Array.isArray(params.category)
+    ? params.category[0]
+    : params.category;
+  const slugParam = Array.isArray(params.slug) ? params.slug[0] : params.slug;
+  const material = getMaterialByPath(categoryParam, slugParam);
+  const materialNeighbors = material
+    ? getMaterialNeighbors(material.id)
+    : { previous: null, next: null };
 
   // Рефы для редакторов кода
   const axisEditorRef = useRef<HTMLTextAreaElement>(null);
@@ -483,9 +495,53 @@ export default function MaterialDetailPage() {
     }
   };
 
+  if (!material) {
+    return (
+      <div className="min-h-screen bg-primary-dark text-text-light">
+        <div className="container mx-auto px-4 max-w-7xl py-16">
+          <div className="glass-card rounded-2xl p-8 text-center border border-glass-border">
+            <div className="w-16 h-16 rounded-full bg-accent-red/10 border border-accent-red mx-auto mb-6 flex items-center justify-center">
+              <i className="fas fa-search text-accent-red text-2xl"></i>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold mb-4 gradient-text">
+              Материал не найден
+            </h1>
+            <p className="text-text-dim max-w-2xl mx-auto mb-8">
+              Проверьте адрес страницы или вернитесь к общей сетке материалов.
+            </p>
+            <Link
+              href="/materials"
+              className="inline-flex items-center justify-center gap-3 px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple transition-all duration-300"
+            >
+              <i className="fas fa-book"></i>
+              Все материалы
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const materialTypeLabel = {
+    article: "Статья",
+    video: "Видео",
+    cheatsheet: "Шпаргалка",
+    interactive: "Интерактив",
+  }[material.type];
+  const materialLevelLabel = {
+    beginner: "Начинающий",
+    intermediate: "Средний",
+    advanced: "Продвинутый",
+  }[material.level];
+  const materialLevelClass = {
+    beginner: "text-accent-blue",
+    intermediate: "text-accent-purple",
+    advanced: "text-accent-red",
+  }[material.level];
+
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes slideIn {
           from {
             transform: translateX(100%);
@@ -550,13 +606,15 @@ export default function MaterialDetailPage() {
             </Link>
             <span className="text-text-dim">/</span>
             <Link
-              href="/materials?category=css"
+              href="/materials"
               className="text-text-dim hover:text-accent-blue transition-colors"
             >
-              CSS
+              {material.categoryLabel}
             </Link>
             <span className="text-text-dim">/</span>
-            <span className="text-accent-blue font-medium">Основы Flexbox</span>
+            <span className="text-accent-blue font-medium">
+              {material.title}
+            </span>
           </div>
         </nav>
 
@@ -593,19 +651,19 @@ export default function MaterialDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-text-dim">Тип:</span>
                     <span className="text-accent-yellow font-medium">
-                      Интерактивная статья
+                      {materialTypeLabel}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-dim">Сложность:</span>
-                    <span className="text-accent-blue font-medium">
-                      Средний
+                    <span className={`${materialLevelClass} font-medium`}>
+                      {materialLevelLabel}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-text-dim">Время:</span>
                     <span className="text-accent-green font-medium">
-                      20-25 минут
+                      {material.duration}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -643,28 +701,23 @@ export default function MaterialDetailPage() {
               {/* Заголовок материала */}
               <div className="mb-8 pb-6 border-b border-glass-border">
                 <h1 className="text-3xl md:text-4xl font-bold mb-4 gradient-text">
-                  Основы Flexbox
+                  {material.title}
                 </h1>
                 <p className="text-lg text-text-dim mb-6">
-                  Изучите гибкую модель разметки для создания адаптивных макетов
-                  без сложных вычислений. Flexbox - это современный подход к
-                  верстке, который упрощает выравнивание и распределение
-                  элементов.
+                  {material.description}
                 </p>
 
                 <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue text-sm">
-                    CSS
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue text-sm">
-                    Flexbox
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue text-sm">
-                    Верстка
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue text-sm">
-                    Адаптивность
-                  </span>
+                  {Array.from(
+                    new Set([material.categoryLabel, ...material.tags]),
+                  ).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue text-sm"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -1060,20 +1113,26 @@ export default function MaterialDetailPage() {
 
               {/* Навигация по материалам */}
               <div className="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-glass-border">
-                <Link
-                  href="/materials/1"
-                  className="px-6 py-3 glass-card rounded-lg border border-glass-border hover:border-accent-blue hover:bg-accent-blue/5 transition-all duration-300 flex items-center justify-center gap-3"
-                >
-                  <i className="fas fa-arrow-left text-accent-blue"></i>
-                  Предыдущий материал
-                </Link>
-                <Link
-                  href="/materials/3"
-                  className="px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-3"
-                >
-                  Следующий материал
-                  <i className="fas fa-arrow-right"></i>
-                </Link>
+                {materialNeighbors.previous ? (
+                  <Link
+                    href={getMaterialHref(materialNeighbors.previous)}
+                    className="px-6 py-3 glass-card rounded-lg border border-glass-border hover:border-accent-blue hover:bg-accent-blue/5 transition-all duration-300 flex items-center justify-center gap-3"
+                  >
+                    <i className="fas fa-arrow-left text-accent-blue"></i>
+                    Предыдущий материал
+                  </Link>
+                ) : (
+                  <span />
+                )}
+                {materialNeighbors.next && (
+                  <Link
+                    href={getMaterialHref(materialNeighbors.next)}
+                    className="px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-3"
+                  >
+                    Следующий материал
+                    <i className="fas fa-arrow-right"></i>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

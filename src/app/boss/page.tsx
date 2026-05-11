@@ -724,7 +724,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes pulse {
           0% {
             opacity: 1;

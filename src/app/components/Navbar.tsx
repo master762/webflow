@@ -1,12 +1,19 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
+  const pathname = usePathname();
   const navLinks = [
-    { href: "/", label: "Главная", active: true },
-    { href: "/Topics", label: "Темы" },
-    { href: "/Materials", label: "Материалы" },
-    { href: "/Profile", label: "Профиль" },
+    { href: "/", label: "Главная" },
+    { href: "/topics", label: "Темы" },
+    { href: "/materials", label: "Материалы" },
+    { href: "/profile", label: "Профиль" },
   ];
+
+  const isActive = (href: string) =>
+    href === "/" ? pathname === href : pathname.startsWith(href);
 
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(10,10,20,0.95)] backdrop-blur-sm border-b border-glass-border py-4 shadow-lg shadow-black/30">
@@ -26,7 +33,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
-                  link.active
+                  isActive(link.href)
                     ? "bg-[rgba(0,217,255,0.15)] text-accent-blue shadow-neon-blue"
                     : "text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue"
                 }`}
@@ -41,7 +48,7 @@ export default function Navbar() {
               XP: 1,245
             </div>
             <Link
-              href="/Auth"
+              href="/auth"
               className="px-4 py-2 rounded-lg font-medium text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue transition-all duration-300 no-underline"
             >
               Войти

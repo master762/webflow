@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LevelPage() {
+function LevelContent() {
   const [activeTab, setActiveTab] = useState<"html" | "css">("html");
   const [htmlCode, setHtmlCode] = useState(`<!DOCTYPE html>
 <html lang="ru">
@@ -216,6 +216,16 @@ export default function LevelPage() {
       string,
       { title: string; icon: string; color: string }
     > = {
+      html: {
+        title: "Основы HTML",
+        icon: "fab fa-html5",
+        color: "text-accent-green",
+      },
+      css: {
+        title: "Основы CSS",
+        icon: "fab fa-css3-alt",
+        color: "text-accent-blue",
+      },
       flexbox: {
         title: "Flexbox",
         icon: "fas fa-boxes",
@@ -231,6 +241,16 @@ export default function LevelPage() {
         icon: "fas fa-magic",
         color: "text-accent-green",
       },
+      responsive: {
+        title: "Адаптивный дизайн",
+        icon: "fas fa-mobile-alt",
+        color: "text-accent-purple",
+      },
+      javascript: {
+        title: "Основы JavaScript",
+        icon: "fab fa-js",
+        color: "text-accent-yellow",
+      },
     };
 
     return topics[topic] || topics.flexbox;
@@ -240,7 +260,7 @@ export default function LevelPage() {
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes pulse {
           0% {
             opacity: 1;
@@ -560,5 +580,24 @@ export default function LevelPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LevelPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-primary-dark text-text-light">
+          <div className="container mx-auto px-4 max-w-7xl py-16">
+            <div className="glass-card rounded-xl p-8 text-center">
+              <i className="fas fa-spinner fa-spin text-accent-blue text-3xl mb-4"></i>
+              <p className="text-text-dim">Загрузка уровня...</p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <LevelContent />
+    </Suspense>
   );
 }

@@ -163,7 +163,7 @@ export default function NotFoundPage() {
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light flex flex-col">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes float {
           0%,
           100% {

@@ -76,7 +76,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes fadeIn {
           from {
             opacity: 0;

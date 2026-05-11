@@ -295,7 +295,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes slideIn {
           from {
             opacity: 0;

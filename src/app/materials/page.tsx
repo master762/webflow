@@ -1,31 +1,75 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  getMaterialHref,
+  materialCategories,
+  materials,
+  type Material,
+} from "@/app/data/materials";
 
-interface Material {
-  id: number;
-  title: string;
-  description: string;
-  category: string;
-  level: "beginner" | "intermediate" | "advanced";
-  type: "article" | "video" | "cheatsheet" | "interactive";
-  duration: string;
-  tags: string[];
-  locked: boolean;
-  requirements?: string;
-  icon: string;
-}
+const typeOptions: Array<{ id: Material["type"]; label: string }> = [
+  { id: "article", label: "Статьи" },
+  { id: "video", label: "Видеоуроки" },
+  { id: "cheatsheet", label: "Шпаргалки" },
+  { id: "interactive", label: "Интерактивные" },
+];
+
+const levelOptions: Array<{ id: Material["level"]; label: string }> = [
+  { id: "beginner", label: "Для начинающих" },
+  { id: "intermediate", label: "Средний уровень" },
+  { id: "advanced", label: "Продвинутый уровень" },
+];
+
+const typeBadges: Record<
+  Material["type"],
+  { label: string; className: string; icon: string }
+> = {
+  article: {
+    label: "Статья",
+    className: "bg-accent-blue/20 text-accent-blue border border-accent-blue",
+    icon: "fas fa-book-open",
+  },
+  video: {
+    label: "Видео",
+    className: "bg-accent-red/20 text-accent-red border border-accent-red",
+    icon: "fas fa-play-circle",
+  },
+  cheatsheet: {
+    label: "Шпаргалка",
+    className: "bg-accent-green/20 text-accent-green border border-accent-green",
+    icon: "fas fa-download",
+  },
+  interactive: {
+    label: "Интерактив",
+    className:
+      "bg-accent-purple/20 text-accent-purple border border-accent-purple",
+    icon: "fas fa-play-circle",
+  },
+};
+
+const levelLabels: Record<Material["level"], string> = {
+  beginner: "Начинающий",
+  intermediate: "Средний",
+  advanced: "Продвинутый",
+};
+
+const levelColors: Record<Material["level"], string> = {
+  beginner: "text-accent-blue",
+  intermediate: "text-accent-purple",
+  advanced: "text-accent-red",
+};
 
 export default function MaterialsPage() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
-  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
-    new Set(["article", "video", "cheatsheet", "interactive"]),
+  const [selectedTypes, setSelectedTypes] = useState<Set<Material["type"]>>(
+    new Set(typeOptions.map((type) => type.id)),
   );
-  const [selectedLevels, setSelectedLevels] = useState<Set<string>>(
-    new Set(["beginner", "intermediate", "advanced"]),
+  const [selectedLevels, setSelectedLevels] = useState<Set<Material["level"]>>(
+    new Set(levelOptions.map((level) => level.id)),
   );
   const [accessFilter, setAccessFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,158 +78,19 @@ export default function MaterialsPage() {
     Array<{ id: number; text: string; type: "success" | "error" | "info" }>
   >([]);
 
-  // Материалы
-  const materials: Material[] = useMemo(
-    () => [
-      {
-        id: 1,
-        title: "Структура HTML-документа",
-        description:
-          "Изучите базовую структуру HTML-документа, теги head и body, doctype и мета-теги. Основы для начинающих.",
-        category: "html",
-        level: "beginner",
-        type: "article",
-        duration: "10 мин",
-        tags: ["HTML", "Основы", "Структура"],
-        locked: false,
-        icon: "fab fa-html5",
-      },
-      {
-        id: 2,
-        title: "Селекторы и каскадность CSS",
-        description:
-          "Подробное руководство по CSS-селекторам, специфичности и каскадности стилей. Шпаргалка для быстрого доступа.",
-        category: "css",
-        level: "beginner",
-        type: "cheatsheet",
-        duration: "15 мин",
-        tags: ["CSS", "Селекторы", "Шпаргалка"],
-        locked: false,
-        icon: "fab fa-css3-alt",
-      },
-      {
-        id: 3,
-        title: "Основы Flexbox",
-        description:
-          "Полное руководство по свойствам Flexbox: flex-direction, justify-content, align-items и другие. С примерами кода.",
-        category: "flexbox",
-        level: "intermediate",
-        type: "article",
-        duration: "20 мин",
-        tags: ["Flexbox", "CSS", "Макет"],
-        locked: false,
-        icon: "fas fa-boxes",
-      },
-      {
-        id: 4,
-        title: "Создание сеток с Grid",
-        description:
-          "Изучите grid-template, grid-area и другие свойства CSS Grid. Видеоурок с практическими примерами.",
-        category: "grid",
-        level: "intermediate",
-        type: "video",
-        duration: "25 мин",
-        tags: ["CSS Grid", "Видео", "Макет"],
-        locked: true,
-        requirements: "Требуется 80% Flexbox",
-        icon: "fas fa-th",
-      },
-      {
-        id: 5,
-        title: "Медиа-запросы на практике",
-        description:
-          "Интерактивное руководство по созданию адаптивных интерфейсов с помощью медиа-запросов. Практика с живыми примерами.",
-        category: "responsive",
-        level: "intermediate",
-        type: "interactive",
-        duration: "30 мин",
-        tags: ["Адаптивность", "CSS", "Интерактив"],
-        locked: false,
-        icon: "fas fa-mobile-alt",
-      },
-      {
-        id: 6,
-        title: "Верстка сложных макетов",
-        description:
-          "Практическое руководство по верстке реальных проектов. Подробный разбор сложных кейсов.",
-        category: "projects",
-        level: "advanced",
-        type: "article",
-        duration: "40 мин",
-        tags: ["Проекты", "Макет", "Практика"],
-        locked: true,
-        requirements: "Все темы CSS",
-        icon: "fas fa-crown",
-      },
-      {
-        id: 7,
-        title: "Семантические теги HTML5",
-        description:
-          "Полное руководство по семантическим тегам HTML5: header, nav, main, section, article и другим.",
-        category: "html",
-        level: "intermediate",
-        type: "article",
-        duration: "18 мин",
-        tags: ["HTML5", "Семантика", "Доступность"],
-        locked: false,
-        icon: "fab fa-html5",
-      },
-      {
-        id: 8,
-        title: "CSS Анимации и переходы",
-        description:
-          "Интерактивное руководство по созданию плавных анимаций и переходов в CSS. Практические примеры.",
-        category: "css",
-        level: "intermediate",
-        type: "interactive",
-        duration: "35 мин",
-        tags: ["Анимации", "CSS", "Интерактив"],
-        locked: false,
-        icon: "fas fa-magic",
-      },
-    ],
+  const categories = useMemo(
+    () =>
+      materialCategories.map((category) => ({
+        ...category,
+        count:
+          category.id === "all"
+            ? materials.length
+            : materials.filter((material) => material.category === category.id)
+                .length,
+      })),
     [],
   );
 
-  // Категории с количеством материалов
-  const categories = useMemo(
-    () => [
-      { id: "all", label: "Все материалы", count: materials.length },
-      {
-        id: "html",
-        label: "HTML",
-        count: materials.filter((m) => m.category === "html").length,
-      },
-      {
-        id: "css",
-        label: "CSS",
-        count: materials.filter((m) => m.category === "css").length,
-      },
-      {
-        id: "flexbox",
-        label: "Flexbox",
-        count: materials.filter((m) => m.category === "flexbox").length,
-      },
-      {
-        id: "grid",
-        label: "CSS Grid",
-        count: materials.filter((m) => m.category === "grid").length,
-      },
-      {
-        id: "responsive",
-        label: "Адаптивный дизайн",
-        count: materials.filter((m) => m.category === "responsive").length,
-      },
-      {
-        id: "projects",
-        label: "Проекты",
-        count: materials.filter((m) => m.category === "projects").length,
-      },
-    ],
-    [materials],
-  );
-
-  // Показать сообщение
   const showMessage = useCallback(
     (text: string, type: "success" | "error" | "info") => {
       const id = Date.now();
@@ -198,8 +103,7 @@ export default function MaterialsPage() {
     [],
   );
 
-  // Переключение типа материала
-  const handleTypeToggle = useCallback((type: string) => {
+  const handleTypeToggle = useCallback((type: Material["type"]) => {
     setSelectedTypes((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(type)) {
@@ -209,10 +113,10 @@ export default function MaterialsPage() {
       }
       return newSet;
     });
+    setCurrentPage(1);
   }, []);
 
-  // Переключение уровня сложности
-  const handleLevelToggle = useCallback((level: string) => {
+  const handleLevelToggle = useCallback((level: Material["level"]) => {
     setSelectedLevels((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(level)) {
@@ -222,9 +126,9 @@ export default function MaterialsPage() {
       }
       return newSet;
     });
+    setCurrentPage(1);
   }, []);
 
-  // Переключение закладки
   const handleBookmarkToggle = useCallback(
     (materialId: number) => {
       setBookmarks((prev) => {
@@ -242,7 +146,6 @@ export default function MaterialsPage() {
     [showMessage],
   );
 
-  // Обработчик клика по заблокированному материалу
   const handleLockedClick = useCallback(
     (material: Material) => {
       showMessage(
@@ -253,81 +156,66 @@ export default function MaterialsPage() {
     [showMessage],
   );
 
-  // Отфильтрованные материалы
   const filteredMaterials = useMemo(() => {
-    const filtered = materials.filter((material) => {
-      // Фильтрация по категории
-      if (activeCategory !== "all" && material.category !== activeCategory) {
-        return false;
-      }
+    const difficultyOrder = { beginner: 1, intermediate: 2, advanced: 3 };
+    const searchLower = searchTerm.trim().toLowerCase();
 
-      // Фильтрация по типу
-      if (!selectedTypes.has(material.type)) {
-        return false;
-      }
-
-      // Фильтрация по уровню
-      if (!selectedLevels.has(material.level)) {
-        return false;
-      }
-
-      // Фильтрация по доступности
-      if (accessFilter === "unlocked" && material.locked) {
-        return false;
-      }
-      if (accessFilter === "locked" && !material.locked) {
-        return false;
-      }
-
-      // Фильтрация по поиску
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesTitle = material.title.toLowerCase().includes(searchLower);
-        const matchesDesc = material.description
-          .toLowerCase()
-          .includes(searchLower);
-        const matchesTags = material.tags.some((tag) =>
-          tag.toLowerCase().includes(searchLower),
-        );
-
-        if (!matchesTitle && !matchesDesc && !matchesTags) {
+    return materials
+      .filter((material) => {
+        if (
+          activeCategory !== "all" &&
+          material.category !== activeCategory
+        ) {
           return false;
         }
-      }
 
-      return true;
-    });
+        if (!selectedTypes.has(material.type)) {
+          return false;
+        }
 
-    // Сортировка
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return b.id - a.id; // По умолчанию - новые сверху
-        case "oldest":
-          return a.id - b.id;
-        case "difficulty":
-          const difficultyOrder = { beginner: 1, intermediate: 2, advanced: 3 };
-          return difficultyOrder[a.level] - difficultyOrder[b.level];
-        case "popular":
-          // Для имитации популярности используем id вместо Math.random()
-          return b.id - a.id; // Или любая другая детерминированная логика
-        default:
-          return 0;
-      }
-    });
+        if (!selectedLevels.has(material.level)) {
+          return false;
+        }
 
-    return filtered;
+        if (accessFilter === "unlocked" && material.locked) {
+          return false;
+        }
+
+        if (accessFilter === "locked" && !material.locked) {
+          return false;
+        }
+
+        if (!searchLower) {
+          return true;
+        }
+
+        return (
+          material.title.toLowerCase().includes(searchLower) ||
+          material.description.toLowerCase().includes(searchLower) ||
+          material.tags.some((tag) => tag.toLowerCase().includes(searchLower))
+        );
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "oldest":
+            return a.id - b.id;
+          case "difficulty":
+            return difficultyOrder[a.level] - difficultyOrder[b.level];
+          case "popular":
+          case "newest":
+          default:
+            return b.id - a.id;
+        }
+      });
   }, [
-    materials,
     activeCategory,
-    selectedTypes,
-    selectedLevels,
     accessFilter,
     searchTerm,
+    selectedLevels,
+    selectedTypes,
     sortBy,
   ]);
 
-  // Пагинация
   const itemsPerPage = 6;
   const totalPages = Math.ceil(filteredMaterials.length / itemsPerPage);
   const paginatedMaterials = filteredMaterials.slice(
@@ -335,38 +223,9 @@ export default function MaterialsPage() {
     currentPage * itemsPerPage,
   );
 
-  // Функции для рендеринга
-  const getTypeBadge = (type: Material["type"]) => {
-    const badges = {
-      article: { label: "Статья", className: "badge-article" },
-      video: { label: "Видео", className: "badge-video" },
-      cheatsheet: { label: "Шпаргалка", className: "badge-cheatsheet" },
-      interactive: { label: "Интерактивный", className: "badge-interactive" },
-    };
-    return badges[type];
-  };
-
-  const getLevelLabel = (level: Material["level"]) => {
-    const labels = {
-      beginner: "Начинающий",
-      intermediate: "Средний",
-      advanced: "Продвинутый",
-    };
-    return labels[level];
-  };
-
-  const getLevelColor = (level: Material["level"]) => {
-    const colors = {
-      beginner: "text-accent-blue",
-      intermediate: "text-accent-purple",
-      advanced: "text-accent-red",
-    };
-    return colors[level];
-  };
-
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes slideIn {
           from {
             transform: translateY(20px);
@@ -377,13 +236,8 @@ export default function MaterialsPage() {
             opacity: 1;
           }
         }
-
-        .slide-in {
-          animation: slideIn 0.5s ease;
-        }
       `}</style>
 
-      {/* Сообщения */}
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -401,82 +255,61 @@ export default function MaterialsPage() {
       ))}
 
       <div className="container mx-auto px-4 max-w-7xl">
-        {/* Шапка материалов */}
         <div className="my-8 p-8 glass-card rounded-2xl text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">
             Учебные материалы
           </h1>
           <p className="text-lg text-text-dim max-w-3xl mx-auto mb-6">
-            Доступные материалы по мере прохождения уровней. Новые материалы
-            разблокируются после выполнения заданий. Используйте фильтры для
-            поиска нужного материала.
+            Единая сетка теории по HTML и CSS. Карточки берутся из общего списка
+            материалов, поэтому новые статьи можно добавлять в одном месте.
           </p>
         </div>
 
-        {/* Панель фильтров */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Тип материала */}
           <div className="glass-card rounded-xl p-6 hover:border-accent-blue transition-all duration-300">
             <h3 className="text-lg font-bold mb-4 text-accent-blue flex items-center gap-2">
               <i className="fas fa-filter"></i> Тип материала
             </h3>
             <div className="space-y-3">
-              {["article", "video", "cheatsheet", "interactive"].map((type) => {
-                const labels = {
-                  article: "Статьи",
-                  video: "Видеоуроки",
-                  cheatsheet: "Шпаргалки",
-                  interactive: "Интерактивные",
-                };
-                return (
-                  <label
-                    key={type}
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedTypes.has(type)}
-                      onChange={() => handleTypeToggle(type)}
-                      className="w-4 h-4 accent-accent-blue"
-                    />
-                    <span>{labels[type as keyof typeof labels]}</span>
-                  </label>
-                );
-              })}
+              {typeOptions.map((type) => (
+                <label
+                  key={type.id}
+                  className="flex items-center gap-3 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedTypes.has(type.id)}
+                    onChange={() => handleTypeToggle(type.id)}
+                    className="w-4 h-4 accent-accent-blue"
+                  />
+                  <span>{type.label}</span>
+                </label>
+              ))}
             </div>
           </div>
 
-          {/* Уровень сложности */}
           <div className="glass-card rounded-xl p-6 hover:border-accent-blue transition-all duration-300">
             <h3 className="text-lg font-bold mb-4 text-accent-blue flex items-center gap-2">
               <i className="fas fa-signal"></i> Уровень сложности
             </h3>
             <div className="space-y-3">
-              {["beginner", "intermediate", "advanced"].map((level) => {
-                const labels = {
-                  beginner: "Для начинающих",
-                  intermediate: "Средний уровень",
-                  advanced: "Продвинутый уровень",
-                };
-                return (
-                  <label
-                    key={level}
-                    className="flex items-center gap-3 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedLevels.has(level)}
-                      onChange={() => handleLevelToggle(level)}
-                      className="w-4 h-4 accent-accent-blue"
-                    />
-                    <span>{labels[level as keyof typeof labels]}</span>
-                  </label>
-                );
-              })}
+              {levelOptions.map((level) => (
+                <label
+                  key={level.id}
+                  className="flex items-center gap-3 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedLevels.has(level.id)}
+                    onChange={() => handleLevelToggle(level.id)}
+                    className="w-4 h-4 accent-accent-blue"
+                  />
+                  <span>{level.label}</span>
+                </label>
+              ))}
             </div>
           </div>
 
-          {/* Доступность */}
           <div className="glass-card rounded-xl p-6 hover:border-accent-blue transition-all duration-300">
             <h3 className="text-lg font-bold mb-4 text-accent-blue flex items-center gap-2">
               <i className="fas fa-unlock"></i> Доступность
@@ -496,7 +329,10 @@ export default function MaterialsPage() {
                     name="access"
                     value={option.value}
                     checked={accessFilter === option.value}
-                    onChange={(e) => setAccessFilter(e.target.value)}
+                    onChange={(e) => {
+                      setAccessFilter(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="w-4 h-4 accent-accent-blue"
                   />
                   <span>{option.label}</span>
@@ -506,9 +342,7 @@ export default function MaterialsPage() {
           </div>
         </div>
 
-        {/* Основной контент */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
-          {/* Боковая панель с категориями */}
           <div className="lg:col-span-1">
             <div className="glass-card rounded-xl p-6 sticky top-24">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -542,22 +376,19 @@ export default function MaterialsPage() {
                 ))}
               </div>
 
-              {/* Совет */}
               <div className="p-4 bg-accent-blue/5 rounded-lg border-l-4 border-accent-blue">
                 <h4 className="font-bold mb-2 text-accent-blue flex items-center gap-2">
-                  <i className="fas fa-lightbulb"></i> Совет
+                  <i className="fas fa-route"></i> Структура
                 </h4>
                 <p className="text-sm text-text-dim leading-relaxed">
-                  Материалы разблокируются по мере прохождения тем. Чтобы
-                  получить доступ ко всем материалам, продолжайте обучение!
+                  Детальная страница строится по схеме: Главная / Материалы /
+                  Категория / Название материала.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Контейнер материалов */}
           <div className="lg:col-span-3">
-            {/* Панель поиска и сортировки */}
             <div className="glass-card rounded-xl p-6 mb-6">
               <div className="flex flex-col md:flex-row gap-4 md:items-center">
                 <div className="flex-1 relative">
@@ -589,16 +420,15 @@ export default function MaterialsPage() {
               </div>
             </div>
 
-            {/* Сетка материалов */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {paginatedMaterials.map((material, index) => {
-                const badge = getTypeBadge(material.type);
+                const badge = typeBadges[material.type];
                 const isBookmarked = bookmarks.has(material.id);
 
                 return (
                   <div
                     key={material.id}
-                    className={`glass-card rounded-xl overflow-hidden transition-all duration-300 flex flex-col h-full ${
+                    className={`glass-card rounded-xl overflow-hidden transition-all duration-300 flex flex-col h-full relative ${
                       material.locked
                         ? "opacity-70 grayscale"
                         : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-1"
@@ -607,35 +437,33 @@ export default function MaterialsPage() {
                       animation: `slideIn 0.5s ease ${index * 0.1}s both`,
                     }}
                   >
-                    {/* Иконка блокировки */}
                     {material.locked && (
                       <div className="absolute top-4 left-4 z-10">
                         <i className="fas fa-lock text-accent-red text-xl"></i>
                       </div>
                     )}
 
-                    {/* Изображение материала */}
                     <div className="h-48 bg-linear-to-br from-accent-blue/20 to-accent-purple/20 flex items-center justify-center relative">
                       <i
                         className={`${material.icon} text-5xl text-accent-blue`}
                       ></i>
                       <span
-                        className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold ${
-                          badge.className === "badge-article"
-                            ? "bg-accent-blue/20 text-accent-blue border border-accent-blue"
-                            : badge.className === "badge-video"
-                              ? "bg-accent-red/20 text-accent-red border border-accent-red"
-                              : badge.className === "badge-cheatsheet"
-                                ? "bg-accent-green/20 text-accent-green border border-accent-green"
-                                : "bg-accent-yellow/20 text-accent-yellow border border-accent-yellow"
-                        }`}
+                        className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold ${badge.className}`}
                       >
                         {badge.label}
                       </span>
                     </div>
 
-                    {/* Контент материала */}
                     <div className="p-6 flex flex-col grow">
+                      <div className="flex items-center gap-2 mb-3 text-xs text-text-dim">
+                        <span className="px-2 py-1 rounded-full bg-white/5 border border-glass-border">
+                          {material.categoryLabel}
+                        </span>
+                        <span className={levelColors[material.level]}>
+                          {levelLabels[material.level]}
+                        </span>
+                      </div>
+
                       <h3 className="text-xl font-bold mb-3">
                         {material.title}
                       </h3>
@@ -643,7 +471,6 @@ export default function MaterialsPage() {
                         {material.description}
                       </p>
 
-                      {/* Мета-информация */}
                       <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                           <i className="far fa-clock text-text-dim"></i>
@@ -654,14 +481,13 @@ export default function MaterialsPage() {
                         <div className="flex items-center gap-2">
                           <i className="fas fa-signal text-text-dim"></i>
                           <span
-                            className={`text-sm ${getLevelColor(material.level)}`}
+                            className={`text-sm ${levelColors[material.level]}`}
                           >
-                            {getLevelLabel(material.level)}
+                            {levelLabels[material.level]}
                           </span>
                         </div>
                       </div>
 
-                      {/* Теги */}
                       <div className="flex flex-wrap gap-2 mb-6">
                         {material.tags.map((tag) => (
                           <span
@@ -673,7 +499,6 @@ export default function MaterialsPage() {
                         ))}
                       </div>
 
-                      {/* Действия */}
                       <div className="flex gap-3 mt-auto">
                         {material.locked ? (
                           <>
@@ -695,31 +520,22 @@ export default function MaterialsPage() {
                         ) : (
                           <>
                             <Link
-                              href={`/materials/${material.id}`}
+                              href={getMaterialHref(material)}
                               className="flex-1 px-4 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple transition-all duration-300 flex items-center justify-center gap-2"
                             >
-                              <i
-                                className={
-                                  material.type === "article"
-                                    ? "fas fa-book-open"
-                                    : material.type === "video"
-                                      ? "fas fa-play-circle"
-                                      : material.type === "cheatsheet"
-                                        ? "fas fa-download"
-                                        : "fas fa-play-circle"
-                                }
-                              ></i>
-                              {material.type === "article"
-                                ? "Читать"
-                                : material.type === "video"
-                                  ? "Смотреть"
-                                  : material.type === "cheatsheet"
-                                    ? "Скачать"
-                                    : "Начать"}
+                              <i className={badge.icon}></i>
+                              {material.type === "video"
+                                ? "Смотреть"
+                                : material.type === "cheatsheet"
+                                  ? "Открыть"
+                                  : material.type === "interactive"
+                                    ? "Начать"
+                                    : "Читать"}
                             </Link>
                             <button
                               onClick={() => handleBookmarkToggle(material.id)}
                               className="px-4 py-3 bg-secondary-dark/50 border border-glass-border rounded-lg hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
+                              aria-label="Переключить закладку"
                             >
                               <i
                                 className={`${isBookmarked ? "fas" : "far"} fa-bookmark ${
@@ -738,7 +554,6 @@ export default function MaterialsPage() {
               })}
             </div>
 
-            {/* Пагинация */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-8">
                 <button
@@ -779,13 +594,14 @@ export default function MaterialsPage() {
               </div>
             )}
 
-            {/* Информация о пустом результате */}
             {paginatedMaterials.length === 0 && (
               <div className="text-center py-12">
                 <i className="fas fa-search text-4xl text-text-dim mb-4"></i>
-                <h3 className="text-xl font-bold mb-2">Материалы не найдены</h3>
+                <h3 className="text-xl font-bold mb-2">
+                  Материалы не найдены
+                </h3>
                 <p className="text-text-dim">
-                  Попробуйте изменить параметры фильтрации или очистить поиск
+                  Попробуйте изменить параметры фильтрации или очистить поиск.
                 </p>
               </div>
             )}

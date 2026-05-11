@@ -22,7 +22,7 @@ interface Topic {
 export default function TopicsPage() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [topics, setTopics] = useState<Topic[]>([
+  const [topics] = useState<Topic[]>([
     {
       id: 1,
       title: "Основы HTML",
@@ -270,6 +270,24 @@ export default function TopicsPage() {
     }
   };
 
+  const getTopicHref = (topic: Topic) => {
+    if (topic.category === "projects") {
+      return "/boss";
+    }
+
+    const topicSlugs: Record<number, string> = {
+      1: "html",
+      2: "css",
+      3: "flexbox",
+      4: "grid",
+      5: "responsive",
+      6: "animations",
+      7: "javascript",
+    };
+
+    return `/level?topic=${topicSlugs[topic.id] ?? "flexbox"}`;
+  };
+
   // Анимация при загрузке
   useEffect(() => {
     const progressBars = document.querySelectorAll(".progress-animate");
@@ -313,7 +331,7 @@ export default function TopicsPage() {
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes slideIn {
           from {
             opacity: 0;
@@ -539,7 +557,7 @@ export default function TopicsPage() {
                 ) : (
                   <>
                     <Link
-                      href={`/level/${topic.id}`}
+                      href={getTopicHref(topic)}
                       className="flex-1 px-4 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple transition-all duration-300 flex items-center justify-center gap-2"
                     >
                       <i className="fas fa-play-circle"></i>
