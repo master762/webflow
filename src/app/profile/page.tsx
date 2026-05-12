@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 interface TopicProgress {
   title: string;
@@ -238,18 +239,11 @@ export default function ProfilePage() {
     }, 1500);
   }, [userName, achievements, showMessage]);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
     if (confirm("Вы уверены, что хотите выйти из аккаунта?")) {
-      showMessage(
-        "Выход из аккаунта... Перенаправление на главную страницу.",
-        "info",
-      );
-
-      setTimeout(() => {
-        router.push("/");
-      }, 1500);
+      await signOut({ callbackUrl: "/" });
     }
-  }, [router, showMessage]);
+  }, []);
 
   const handleAchievementClick = useCallback(
     (achievement: Achievement) => {

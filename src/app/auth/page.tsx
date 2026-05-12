@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
@@ -26,20 +27,24 @@ export default function AuthPage() {
     confirmPassword: "",
   });
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!loginForm.email || !loginForm.password) {
-      alert("Пожалуйста, заполните все поля");
+    const result = await signIn("credentials", {
+      email: loginForm.email,
+      password: loginForm.password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      alert("Неверный email или пароль");
       return;
     }
 
-    // Имитация успешного входа
-    alert("Успешный вход! Перенаправление на главную страницу...");
     router.push("/");
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (
@@ -48,7 +53,7 @@ export default function AuthPage() {
       !registerForm.password ||
       !registerForm.confirmPassword
     ) {
-      alert("Пожалуйста, заполните все поля");
+      alert("Заполните все поля");
       return;
     }
 
@@ -57,56 +62,36 @@ export default function AuthPage() {
       return;
     }
 
-    if (!termsAgreed) {
-      alert("Необходимо согласиться с условиями использования");
-      return;
-    }
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: registerForm.username,
+          email: registerForm.email,
+          password: registerForm.password,
+        }),
+      });
 
-    // Имитация успешной регистрации
-    alert("Регистрация прошла успешно! Теперь вы можете войти в систему.");
-    setActiveTab("login");
-    // Сброс формы
-    setRegisterForm({
-      username: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-    });
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error);
+        return;
+      }
+
+      alert("Регистрация успешна");
+
+      setActiveTab("login");
+    } catch {
+      alert("Ошибка регистрации");
+    }
   };
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .fade-in {
-          animation: fadeIn 0.5s ease;
-        }
-
-        .auth-side-img {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          height: 200px;
-          border-radius: 10px;
-          border: 2px solid var(--accent-blue);
-          box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: bold;
-          margin-top: 30px;
-        }
-      `}</style>
-
       {/* Основной контент */}
       <div className="flex flex-col min-h-screen">
         <div className="flex-1 flex items-center justify-center p-4">

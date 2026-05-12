@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import TopicCard from "@/app/components/TopicCard";
 import AchievementCard from "@/app/components/AchievementCard";
 import Link from "next/link";
-
+import Navbar from "@/app/components/Navbar";
 export default function Home() {
   const topics = [
     {
@@ -93,54 +93,56 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 max-w-7xl">
-      {/* Герой-секция */}
-      <section className="text-center my-16 py-10">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 gradient-text">
-          Изучай HTML/CSS как в игре
-        </h1>
-        <p className="text-lg text-text-dim max-w-3xl mx-auto mb-8 leading-relaxed">
-          Прокачивай навыки веб-разработки, проходя уровни, сражайся с боссами и
-          отслеживай прогресс. Начни свой путь к мастерству верстки прямо
-          сейчас!
-        </p>
-        <Link
-          href="/topics"
-          className="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg shadow-lg hover:shadow-neon-purple hover:-translate-y-1 transition-all duration-300 animate-pulse no-underline"
-        >
-          Начать обучение
-        </Link>
-      </section>
+    <>
+      <div className="container mx-auto px-4 max-w-7xl">
+        {/* Герой-секция */}
+        <section className="text-center my-16 py-10">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 gradient-text">
+            Изучай HTML/CSS как в игре
+          </h1>
+          <p className="text-lg text-text-dim max-w-3xl mx-auto mb-8 leading-relaxed">
+            Прокачивай навыки веб-разработки, проходя уровни, сражайся с боссами
+            и отслеживай прогресс. Начни свой путь к мастерству верстки прямо
+            сейчас!
+          </p>
+          <Link
+            href="/topics"
+            className="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg shadow-lg hover:shadow-neon-purple hover:-translate-y-1 transition-all duration-300 animate-pulse no-underline"
+          >
+            Начать обучение
+          </Link>
+        </section>
 
-      {/* Текущий прогресс */}
-      <h2 className="text-3xl md:text-4xl font-bold text-text-light mb-4">
-        Текущий прогресс
-      </h2>
-      <p className="text-lg text-text-dim mb-8">
-        Продолжай изучать темы, над которыми работал в последний раз
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 my-10">
-        {topics.map((topic) => (
-          <TopicCard key={topic.id} topic={topic} />
-        ))}
-      </div>
-
-      {/* Достижения */}
-      <section className="my-16">
+        {/* Текущий прогресс */}
         <h2 className="text-3xl md:text-4xl font-bold text-text-light mb-4">
-          Последние достижения
+          Текущий прогресс
         </h2>
         <p className="text-lg text-text-dim mb-8">
-          Ваши последние успехи в изучении HTML и CSS
+          Продолжай изучать темы, над которыми работал в последний раз
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {achievements.map((achievement) => (
-            <AchievementCard key={achievement.id} achievement={achievement} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 my-10">
+          {topics.map((topic) => (
+            <TopicCard key={topic.id} topic={topic} />
           ))}
         </div>
-      </section>
-    </div>
+
+        {/* Достижения */}
+        <section className="my-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-text-light mb-4">
+            Последние достижения
+          </h2>
+          <p className="text-lg text-text-dim mb-8">
+            Ваши последние успехи в изучении HTML и CSS
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {achievements.map((achievement) => (
+              <AchievementCard key={achievement.id} achievement={achievement} />
+            ))}
+          </div>
+        </section>
+      </div>
+    </>
   );
 }
