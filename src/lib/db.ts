@@ -1,9 +1,15 @@
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
+import { PrismaClient } from "@prisma/client";
 
-export async function getDB() {
-  return open({
-    filename: "./database.db",
-    driver: sqlite3.Database,
+const globalForPrisma = global as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log: ["error"],
   });
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
 }

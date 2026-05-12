@@ -13,13 +13,17 @@ export default function MaterialDetailPage() {
   const [activeSection, setActiveSection] = useState("intro");
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
-    new Set(),
-  );
-  const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<(string | null)[]>([
+    null,
+    null,
+    null,
+  ]);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizResults, setQuizResults] = useState<boolean[] | null>(null);
   const [messages, setMessages] = useState<
     Array<{ id: number; text: string; type: "success" | "error" | "info" }>
   >([]);
+  const [isMounted, setIsMounted] = useState(false);
 
   const params = useParams();
   const categoryParam = Array.isArray(params.category)
@@ -39,7 +43,7 @@ export default function MaterialDetailPage() {
   const practiceEditorRef = useRef<HTMLTextAreaElement>(null);
   const practicePreviewRef = useRef<HTMLDivElement>(null);
 
-  // Секции материала (используем useMemo)
+  // Секции материала
   const sections = useMemo(
     () => [
       { id: "intro", title: "Введение в Flexbox", icon: "fa-play-circle" },
@@ -61,65 +65,58 @@ export default function MaterialDetailPage() {
     [],
   );
 
-  // Исходный код для примеров
-  const axisExampleCode = `.container {
+  // Код для примеров свойств контейнера
+  const containerExampleCode = `.container {
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   width: 100%;
   height: 200px;
   background-color: #1a1a2e;
   border: 2px solid #00d9ff;
 }
-
 .item {
-  width: 50px;
-  height: 50px;
+  width: 80px;
+  height: 80px;
   background-color: #00d9ff;
-  margin: 5px;
-  border-radius: 5px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  color: #fff;
 }`;
 
-  const itemsExampleCode = `.container {
+  // Код для свойств элементов
+  const itemsPropertiesCode = `.container {
   display: flex;
   width: 100%;
-  height: 150px;
+  height: 200px;
   background-color: #1a1a2e;
   border: 2px solid #00d9ff;
+  gap: 10px;
   padding: 10px;
 }
-
 .item {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   background-color: #00d9ff;
-  margin: 5px;
-  border-radius: 5px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  color: #fff;
 }
+/* Пример свойств элементов */
+.item:nth-child(1) { order: 2; flex-grow: 1; }
+.item:nth-child(2) { order: 1; flex-grow: 2; align-self: center; }
+.item:nth-child(3) { order: 3; flex-grow: 1; }`;
 
-/* Измените свойства элементов ниже */
-.item:nth-child(1) {
-  flex-grow: 1;
-}
-
-.item:nth-child(2) {
-  flex-grow: 2;
-}
-
-.item:nth-child(3) {
-  order: -1;
-  align-self: flex-end;
-}`;
-
+  // Исходный код для практики (уже был)
   const practiceExampleCode = `/* Ваш CSS код здесь */
 .product-card {
   /* Сделайте карточку flex-контейнером */
@@ -199,7 +196,6 @@ export default function MaterialDetailPage() {
     (text: string, type: "success" | "error" | "info") => {
       const id = Date.now();
       setMessages((prev) => [...prev, { id, text, type }]);
-
       setTimeout(() => {
         setMessages((prev) => prev.filter((msg) => msg.id !== id));
       }, 3000);
@@ -207,91 +203,50 @@ export default function MaterialDetailPage() {
     [],
   );
 
-  // Функция обновления предпросмотра
+  // Универсальная функция обновления превью
   const updatePreview = useCallback(
     (
       editor: HTMLTextAreaElement | null,
       preview: HTMLDivElement | null,
-      isPractice = false,
+      customHtml?: string,
     ) => {
       if (!editor || !preview) return;
-
       const code = editor.value;
-
-      // Создаем iframe для безопасного выполнения кода
       const iframe = document.createElement("iframe");
       iframe.style.width = "100%";
       iframe.style.height = "100%";
       iframe.style.border = "none";
       iframe.style.borderRadius = "8px";
-
-      // Вставляем iframe в превью
       preview.innerHTML = "";
       preview.appendChild(iframe);
-
-      // Формируем содержимое iframe
       const iframeDoc =
         iframe.contentDocument || iframe.contentWindow?.document;
       if (iframeDoc) {
         iframeDoc.open();
-
         let htmlContent = "";
-        if (isPractice) {
-          htmlContent = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <style>
-                  body {
-                      margin: 0;
-                      padding: 20px;
-                      font-family: Arial, sans-serif;
-                      background-color: #f8f9fa;
-                  }
-                  ${code}
-              </style>
-          </head>
-          <body>
-              <div class="product-card">
-                  <div class="product-image"></div>
-                  <div class="product-content">
-                      <h3 class="product-title">Ноутбук Gaming Pro</h3>
-                      <p class="product-description">Мощный игровой ноутбук с процессором Intel Core i7 и видеокартой NVIDIA RTX 3060.</p>
-                      <div class="product-footer">
-                          <div class="product-price">89 990 &amp;#8381;</div>
-                          <button class="add-to-cart">В корзину</button>
-                      </div>
-                  </div>
-              </div>
-          </body>
-          </html>
-        `;
+        if (customHtml) {
+          htmlContent = customHtml.replace("{{CODE}}", code);
         } else {
+          // Для демонстрации осей и свойств элементов используем общий шаблон
           htmlContent = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <style>
-                  body {
-                      margin: 0;
-                      padding: 20px;
-                      font-family: Arial, sans-serif;
-                      background-color: #f8f9fa;
-                  }
-                  ${code}
-              </style>
-          </head>
-          <body>
-              <div class="container">
-                  <div class="item">1</div>
-                  <div class="item">2</div>
-                  <div class="item">3</div>
-              </div>
-          </body>
-          </html>
-        `;
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f8f9fa; }
+                    ${code}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="item">1</div>
+                    <div class="item">2</div>
+                    <div class="item">3</div>
+                </div>
+            </body>
+            </html>
+          `;
         }
-
         iframeDoc.write(htmlContent);
         iframeDoc.close();
       }
@@ -299,23 +254,40 @@ export default function MaterialDetailPage() {
     [],
   );
 
-  // Инициализация примеров
   useEffect(() => {
-    // Обновляем предпросмотры при загрузке
     setTimeout(() => {
       updatePreview(axisEditorRef.current, axisPreviewRef.current);
       updatePreview(itemsEditorRef.current, itemsPreviewRef.current);
       updatePreview(
         practiceEditorRef.current,
         practicePreviewRef.current,
-        true,
+        `<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f8f9fa; }
+                {{CODE}}
+            </style>
+        </head>
+        <body>
+            <div class="product-card">
+                <div class="product-image"></div>
+                <div class="product-content">
+                    <h3 class="product-title">Ноутбук Gaming Pro</h3>
+                    <p class="product-description">Мощный игровой ноутбук с процессором Intel Core i7 и видеокартой NVIDIA RTX 3060.</p>
+                    <div class="product-footer">
+                        <div class="product-price">89 990 &#8381;</div>
+                        <button class="add-to-cart">В корзину</button>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>`,
       );
     }, 100);
 
-    // Обработчик прокрутки для обновления активной секции
     const handleScroll = () => {
       const scrollPosition = window.scrollY + 100;
-
       for (const section of sections) {
         const element = document.getElementById(`${section.id}-section`);
         if (element) {
@@ -330,12 +302,16 @@ export default function MaterialDetailPage() {
         }
       }
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [sections, updatePreview]);
 
-  // Функции действий
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
+  // Обработчики действий
   const handleBookmark = useCallback(() => {
     setIsBookmarked(!isBookmarked);
     showMessage(
@@ -377,39 +353,63 @@ export default function MaterialDetailPage() {
     (type: "axis" | "items" | "practice") => {
       let code = "";
       let ref = practiceEditorRef;
-
+      let isPractice = false;
       switch (type) {
         case "axis":
-          code = axisExampleCode;
+          code = containerExampleCode;
           ref = axisEditorRef;
           break;
         case "items":
-          code = itemsExampleCode;
+          code = itemsPropertiesCode;
           ref = itemsEditorRef;
           break;
         case "practice":
           code = practiceExampleCode;
           ref = practiceEditorRef;
+          isPractice = true;
           break;
       }
-
       if (ref.current) {
         ref.current.value = code;
-        updatePreview(
-          ref.current,
-          type === "axis"
-            ? axisPreviewRef.current
-            : type === "items"
-              ? itemsPreviewRef.current
-              : practicePreviewRef.current,
-          type === "practice",
-        );
+        if (isPractice) {
+          updatePreview(
+            ref.current,
+            practicePreviewRef.current,
+            `<!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f8f9fa; }
+                    {{CODE}}
+                </style>
+            </head>
+            <body>
+                <div class="product-card">
+                    <div class="product-image"></div>
+                    <div class="product-content">
+                        <h3 class="product-title">Ноутбук Gaming Pro</h3>
+                        <p class="product-description">Мощный игровой ноутбук с процессором Intel Core i7 и видеокартой NVIDIA RTX 3060.</p>
+                        <div class="product-footer">
+                            <div class="product-price">89 990 &#8381;</div>
+                            <button class="add-to-cart">В корзину</button>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>`,
+          );
+        } else {
+          updatePreview(
+            ref.current,
+            type === "axis" ? axisPreviewRef.current : itemsPreviewRef.current,
+          );
+        }
         showMessage("Код сброшен к исходному состоянию", "info");
       }
     },
     [
-      axisExampleCode,
-      itemsExampleCode,
+      containerExampleCode,
+      itemsPropertiesCode,
       practiceExampleCode,
       updatePreview,
       showMessage,
@@ -418,7 +418,6 @@ export default function MaterialDetailPage() {
 
   const handleCheckPractice = useCallback(() => {
     if (!practiceEditorRef.current) return;
-
     const code = practiceEditorRef.current.value;
     const checks = {
       hasFlexDisplay:
@@ -427,9 +426,7 @@ export default function MaterialDetailPage() {
       hasJustifyContent: code.includes("justify-content"),
       hasMediaQuery: code.includes("@media"),
     };
-
     const passedChecks = Object.values(checks).filter(Boolean).length;
-
     if (passedChecks >= 3) {
       showMessage(
         "Отлично! Ваше решение правильное. Вы хорошо поняли основы Flexbox!",
@@ -444,38 +441,41 @@ export default function MaterialDetailPage() {
   }, [showMessage]);
 
   const handleAnswerQuestion = useCallback(
-    (questionNumber: number, isCorrect: boolean) => {
-      if (answeredQuestions.has(questionNumber)) {
-        showMessage("Вы уже отвечали на этот вопрос", "info");
-        return;
-      }
-
-      setAnsweredQuestions((prev) => {
-        const newSet = new Set(prev);
-        newSet.add(questionNumber);
-        return newSet;
+    (questionNumber: number, answer: string) => {
+      if (quizSubmitted) return;
+      setSelectedAnswers((prev) => {
+        const newAnswers = [...prev];
+        newAnswers[questionNumber - 1] = answer;
+        return newAnswers;
       });
-
-      if (isCorrect) {
-        setCorrectAnswersCount((prev) => prev + 1);
-      }
     },
-    [answeredQuestions, showMessage],
+    [quizSubmitted],
   );
 
   const handleSubmitQuiz = useCallback(() => {
-    const totalQuestions = 3;
-    if (answeredQuestions.size < totalQuestions) {
+    if (quizSubmitted) return;
+    const correctAnswersMap: Record<number, string> = {
+      1: "display: flex",
+      2: "flex-direction",
+      3: "space-around",
+    };
+    const unanswered = selectedAnswers.some((a) => a === null);
+    if (unanswered) {
+      const answeredCount = selectedAnswers.filter((a) => a !== null).length;
       showMessage(
-        `Вы ответили только на ${answeredQuestions.size} из ${totalQuestions} вопросов. Ответьте на все вопросы для завершения теста.`,
+        `Вы ответили только на ${answeredCount} из 3 вопросов. Ответьте на все вопросы для завершения теста.`,
         "info",
       );
       return;
     }
-
-    const percentage = Math.round((correctAnswersCount / totalQuestions) * 100);
+    const results = selectedAnswers.map(
+      (ans, idx) => ans === correctAnswersMap[idx + 1],
+    );
+    setQuizResults(results);
+    setQuizSubmitted(true);
+    const correctCount = results.filter(Boolean).length;
+    const percentage = Math.round((correctCount / 3) * 100);
     let message = "";
-
     if (percentage >= 80) {
       message = `Превосходно! Вы набрали ${percentage}% правильных ответов. Вы отлично усвоили материал!`;
     } else if (percentage >= 60) {
@@ -483,9 +483,8 @@ export default function MaterialDetailPage() {
     } else {
       message = `Вы набрали ${percentage}% правильных ответов. Рекомендуем повторить материал и попробовать снова.`;
     }
-
     showMessage(message, percentage >= 60 ? "success" : "info");
-  }, [answeredQuestions.size, correctAnswersCount, showMessage]);
+  }, [selectedAnswers, quizSubmitted, showMessage]);
 
   const handleSectionClick = (sectionId: string) => {
     setActiveSection(sectionId);
@@ -552,7 +551,6 @@ export default function MaterialDetailPage() {
             opacity: 1;
           }
         }
-
         .code-comment {
           color: #6a9955;
         }
@@ -570,7 +568,6 @@ export default function MaterialDetailPage() {
         }
       `}</style>
 
-      {/* Сообщения */}
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -618,7 +615,6 @@ export default function MaterialDetailPage() {
           </div>
         </nav>
 
-        {/* Контейнер материала */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
           {/* Боковая панель */}
           <div className="lg:col-span-1">
@@ -627,7 +623,6 @@ export default function MaterialDetailPage() {
                 <i className="fas fa-list-ul"></i>
                 Содержание
               </h3>
-
               <div className="space-y-2 mb-6">
                 {sections.map((section) => (
                   <button
@@ -644,8 +639,6 @@ export default function MaterialDetailPage() {
                   </button>
                 ))}
               </div>
-
-              {/* Мета-информация */}
               <div className="border-t border-glass-border pt-6">
                 <div className="space-y-3">
                   <div className="flex justify-between">
@@ -673,7 +666,6 @@ export default function MaterialDetailPage() {
                     </span>
                   </div>
                 </div>
-
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={handleBookmark}
@@ -698,7 +690,7 @@ export default function MaterialDetailPage() {
           {/* Основной контент */}
           <div className="lg:col-span-3">
             <div className="glass-card rounded-xl p-6 lg:p-8">
-              {/* Заголовок материала */}
+              {/* Заголовок */}
               <div className="mb-8 pb-6 border-b border-glass-border">
                 <h1 className="text-3xl md:text-4xl font-bold mb-4 gradient-text">
                   {material.title}
@@ -706,7 +698,6 @@ export default function MaterialDetailPage() {
                 <p className="text-lg text-text-dim mb-6">
                   {material.description}
                 </p>
-
                 <div className="flex flex-wrap gap-2 mb-6">
                   {Array.from(
                     new Set([material.categoryLabel, ...material.tags]),
@@ -719,7 +710,6 @@ export default function MaterialDetailPage() {
                     </span>
                   ))}
                 </div>
-
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button
                     onClick={handleStartLearning}
@@ -744,7 +734,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
 
-              {/* Секция 1: Введение */}
+              {/* 1. Введение */}
               <div
                 className="mb-12 pb-8 border-b border-glass-border"
                 id="intro-section"
@@ -753,10 +743,6 @@ export default function MaterialDetailPage() {
                   <i className="fas fa-play-circle text-accent-blue"></i>
                   1. Введение в Flexbox
                 </h2>
-                <p className="text-text-dim mb-6">
-                  Что такое Flexbox и зачем он нужен
-                </p>
-
                 <div className="space-y-4">
                   <p>
                     Flexbox (Flexible Box Layout) — это модуль CSS, который
@@ -765,7 +751,6 @@ export default function MaterialDetailPage() {
                     пространства между элементами в контейнере, даже когда их
                     размер неизвестен или динамически изменяется.
                   </p>
-
                   <p>Основные преимущества Flexbox:</p>
                   <ul className="list-disc pl-6 space-y-2">
                     <li>
@@ -781,15 +766,11 @@ export default function MaterialDetailPage() {
                     </li>
                     <li>Простое создание адаптивных макетов</li>
                   </ul>
-
                   <p>
                     Flexbox особенно полезен для создания навигационных панелей,
-                    карточек товаров, форм и других компонентов, которые должны
-                    адаптироваться к разным размерам экрана.
+                    карточек товаров, форм и других компонентов.
                   </p>
                 </div>
-
-                {/* Пример кода */}
                 <div className="mt-6 bg-[#1a1a2e] rounded-lg overflow-hidden border border-glass-border">
                   <div className="p-4 bg-[#0f0f1a] border-b border-glass-border flex justify-between items-center">
                     <div className="flex items-center gap-2 font-medium">
@@ -820,7 +801,7 @@ export default function MaterialDetailPage() {
                     {"}"} <br />
                     <br />
                     <span className="text-[#6a9955]">
-                      {"/* Или inline-flex для inline-контейнера */"}
+                      {"/* Или inline-flex для строчного контейнера */"}
                     </span>
                     <br />
                     .container {"{"} <br />
@@ -833,7 +814,7 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
 
-              {/* Секция 2: Основные понятия */}
+              {/* 2. Основные понятия */}
               <div
                 className="mb-12 pb-8 border-b border-glass-border"
                 id="basics-section"
@@ -842,54 +823,40 @@ export default function MaterialDetailPage() {
                   <i className="fas fa-cube text-accent-blue"></i>
                   2. Основные понятия
                 </h2>
-                <p className="text-text-dim mb-6">
-                  Главные элементы и оси Flexbox
-                </p>
-
                 <div className="space-y-4">
                   <p>Flexbox состоит из двух основных типов элементов:</p>
                   <ol className="list-decimal pl-6 space-y-2">
                     <li>
                       <strong>Flex Container</strong> — родительский элемент,
-                      который содержит flex-элементы. Он определяет контекст
-                      flex-форматирования для своих дочерних элементов.
+                      задающий контекст flex-форматирования.
                     </li>
                     <li>
-                      <strong>Flex Items</strong> — дочерние элементы
-                      flex-контейнера. Они располагаются внутри контейнера
-                      согласно правилам Flexbox.
+                      <strong>Flex Items</strong> — дочерние элементы,
+                      располагающиеся внутри контейнера.
                     </li>
                   </ol>
-
-                  <p>Также важно понимать концепцию осей:</p>
+                  <p>Концепция осей:</p>
                   <ul className="list-disc pl-6 space-y-2">
                     <li>
-                      <strong>Главная ось (Main Axis)</strong> — основное
-                      направление, вдоль которого располагаются flex-элементы.
-                      По умолчанию это горизонтальная ось (слева направо).
+                      <strong>Главная ось (Main Axis)</strong> — направление, по
+                      которому выкладываются элементы (по умолчанию слева
+                      направо).
                     </li>
                     <li>
                       <strong>Поперечная ось (Cross Axis)</strong> — ось,
-                      перпендикулярная главной. По умолчанию это вертикальная
-                      ось (сверху вниз).
+                      перпендикулярная главной (по умолчанию сверху вниз).
                     </li>
                   </ul>
-
                   <p>
-                    Направление главной оси можно менять с помощью свойства
-                    <code className="mx-1 px-2 py-1 bg-black/30 rounded">
-                      flex-direction
-                    </code>
-                    , что автоматически меняет и направление поперечной оси.
+                    Свойство <code>flex-direction</code> меняет направление
+                    главной оси.
                   </p>
                 </div>
-
-                {/* Интерактивный пример */}
                 <div className="mt-6 bg-[#1a1a2e] rounded-lg overflow-hidden border border-glass-border">
                   <div className="p-4 bg-[#0f0f1a] border-b border-glass-border flex justify-between items-center">
                     <div className="flex items-center gap-2 font-medium">
                       <i className="fas fa-play-circle text-accent-blue"></i>
-                      Интерактивный пример: оси Flexbox
+                      Интерактивный пример: изменение направления
                     </div>
                     <button
                       onClick={() => handleResetCode("axis")}
@@ -902,7 +869,7 @@ export default function MaterialDetailPage() {
                     <textarea
                       ref={axisEditorRef}
                       className="w-full h-64 bg-[#0f0f1a] text-white font-mono text-sm p-4 rounded resize-none focus:outline-none"
-                      defaultValue={axisExampleCode}
+                      defaultValue={containerExampleCode}
                       onChange={() =>
                         updatePreview(
                           axisEditorRef.current,
@@ -918,7 +885,226 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
 
-              {/* Секция 6: Практическое задание */}
+              {/* 3. Свойства контейнера */}
+              <div
+                className="mb-12 pb-8 border-b border-glass-border"
+                id="container-section"
+              >
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
+                  <i className="fas fa-box text-accent-blue"></i>
+                  3. Свойства контейнера
+                </h2>
+                <div className="space-y-4">
+                  <p>
+                    Flex-контейнер управляет расположением всех дочерних
+                    элементов. Основные свойства:
+                  </p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>
+                      <code>flex-direction</code> — направление главной оси
+                      (row, column, row-reverse, column-reverse).
+                    </li>
+                    <li>
+                      <code>justify-content</code> — выравнивание по главной оси
+                      (flex-start, flex-end, center, space-between,
+                      space-around, space-evenly).
+                    </li>
+                    <li>
+                      <code>align-items</code> — выравнивание по поперечной оси
+                      (stretch, flex-start, flex-end, center, baseline).
+                    </li>
+                    <li>
+                      <code>flex-wrap</code> — перенос элементов на новую строку
+                      (nowrap, wrap, wrap-reverse).
+                    </li>
+                    <li>
+                      <code>gap</code> — расстояние между элементами.
+                    </li>
+                  </ul>
+                  <p>
+                    Поэкспериментируйте с кодом в редакторе, чтобы увидеть
+                    эффект от изменения этих свойств.
+                  </p>
+                </div>
+                <div className="mt-6 bg-[#1a1a2e] rounded-lg overflow-hidden border border-glass-border">
+                  <div className="p-4 bg-[#0f0f1a] border-b border-glass-border flex justify-between items-center">
+                    <div className="flex items-center gap-2 font-medium">
+                      <i className="fas fa-code text-accent-blue"></i>
+                      Редактор свойств контейнера
+                    </div>
+                    <button
+                      onClick={() => handleResetCode("axis")}
+                      className="px-3 py-1 bg-black/30 border border-glass-border rounded text-sm hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
+                    >
+                      Сбросить
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                    <textarea
+                      ref={axisEditorRef}
+                      className="w-full h-80 bg-[#0f0f1a] text-white font-mono text-sm p-4 rounded resize-none focus:outline-none"
+                      defaultValue={containerExampleCode}
+                      onChange={() =>
+                        updatePreview(
+                          axisEditorRef.current,
+                          axisPreviewRef.current,
+                        )
+                      }
+                    />
+                    <div
+                      ref={axisPreviewRef}
+                      className="bg-white rounded min-h-80"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Свойства элементов */}
+              <div
+                className="mb-12 pb-8 border-b border-glass-border"
+                id="items-section"
+              >
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
+                  <i className="fas fa-th text-accent-blue"></i>
+                  4. Свойства элементов
+                </h2>
+                <div className="space-y-4">
+                  <p>
+                    Flex-элементы могут иметь собственные свойства, управляющие
+                    их размерами и порядком:
+                  </p>
+                  <ul className="list-disc pl-6 space-y-2">
+                    <li>
+                      <code>order</code> — порядок следования элемента (по
+                      умолчанию 0).
+                    </li>
+                    <li>
+                      <code>flex-grow</code> — коэффициент растяжения элемента,
+                      если есть свободное место.
+                    </li>
+                    <li>
+                      <code>flex-shrink</code> — коэффициент сжатия элемента.
+                    </li>
+                    <li>
+                      <code>align-self</code> — переопределяет выравнивание для
+                      конкретного элемента.
+                    </li>
+                  </ul>
+                  <p>
+                    Используйте редактор ниже, чтобы изменить свойства отдельных
+                    элементов и увидеть, как меняется раскладка.
+                  </p>
+                </div>
+                <div className="mt-6 bg-[#1a1a2e] rounded-lg overflow-hidden border border-glass-border">
+                  <div className="p-4 bg-[#0f0f1a] border-b border-glass-border flex justify-between items-center">
+                    <div className="flex items-center gap-2 font-medium">
+                      <i className="fas fa-code text-accent-blue"></i>
+                      Редактор свойств элементов
+                    </div>
+                    <button
+                      onClick={() => handleResetCode("items")}
+                      className="px-3 py-1 bg-black/30 border border-glass-border rounded text-sm hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
+                    >
+                      Сбросить
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                    <textarea
+                      ref={itemsEditorRef}
+                      className="w-full h-80 bg-[#0f0f1a] text-white font-mono text-sm p-4 rounded resize-none focus:outline-none"
+                      defaultValue={itemsPropertiesCode}
+                      onChange={() =>
+                        updatePreview(
+                          itemsEditorRef.current,
+                          itemsPreviewRef.current,
+                        )
+                      }
+                    />
+                    <div
+                      ref={itemsPreviewRef}
+                      className="bg-white rounded min-h-80"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Примеры использования */}
+              <div
+                className="mb-12 pb-8 border-b border-glass-border"
+                id="examples-section"
+              >
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
+                  <i className="fas fa-laptop-code text-accent-blue"></i>
+                  5. Примеры использования
+                </h2>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      Горизонтальная навигационная панель
+                    </h3>
+                    <p className="text-text-dim mb-2">
+                      Flexbox идеально подходит для создания адаптивного меню:
+                    </p>
+                    <pre className="bg-[#1a1a2e] p-3 rounded-lg overflow-x-auto text-sm">
+                      <code>{`.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #333;
+  padding: 1rem;
+}
+.nav-menu {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+}`}</code>
+                    </pre>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      Карточки товаров
+                    </h3>
+                    <p className="text-text-dim mb-2">
+                      Равномерное распределение карточек в строке:
+                    </p>
+                    <pre className="bg-[#1a1a2e] p-3 rounded-lg overflow-x-auto text-sm">
+                      <code>{`.products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+}
+.product-card {
+  flex: 1 1 250px; /* растяжение, сжатие, базовый размер */
+  border: 1px solid #ddd;
+  padding: 15px;
+  border-radius: 8px;
+}`}</code>
+                    </pre>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">
+                      Центрирование блока по вертикали и горизонтали
+                    </h3>
+                    <p className="text-text-dim mb-2">
+                      Классический трюк с абсолютным центрированием:
+                    </p>
+                    <pre className="bg-[#1a1a2e] p-3 rounded-lg overflow-x-auto text-sm">
+                      <code>{`.parent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+.child {
+  /* любой размер */
+}`}</code>
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. Практическое задание */}
               <div
                 className="mb-12 pb-8 border-b border-glass-border"
                 id="practice-section"
@@ -930,9 +1116,7 @@ export default function MaterialDetailPage() {
                 <p className="text-text-dim mb-6">
                   Создайте адаптивную карточку товара с использованием Flexbox
                 </p>
-
                 <div className="space-y-4 mb-6">
-                  <p>Ваша задача — создать карточку товара, которая должна:</p>
                   <ol className="list-decimal pl-6 space-y-2">
                     <li>Иметь изображение товара сверху</li>
                     <li>Содержать заголовок, описание и цену</li>
@@ -940,24 +1124,15 @@ export default function MaterialDetailPage() {
                       Иметь кнопку &quot;В корзину&quot;, выровненную по правому
                       краю
                     </li>
-                    <li>
-                      Адаптироваться для мобильных устройств (на мобильных
-                      кнопка должна занимать всю ширину)
-                    </li>
+                    <li>На мобильных устройствах кнопка занимает всю ширину</li>
                     <li>Использовать Flexbox для выравнивания элементов</li>
                   </ol>
-                  <p>
-                    Готовый код можно проверить с помощью кнопки &quot;Проверить
-                    решение&quot; ниже.
-                  </p>
                 </div>
-
-                {/* Интерактивный пример */}
                 <div className="bg-[#1a1a2e] rounded-lg overflow-hidden border border-glass-border">
                   <div className="p-4 bg-[#0f0f1a] border-b border-glass-border flex justify-between items-center">
                     <div className="flex items-center gap-2 font-medium">
                       <i className="fas fa-code text-accent-blue"></i>
-                      Редактор для практического задания
+                      Редактор задания
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -983,7 +1158,28 @@ export default function MaterialDetailPage() {
                         updatePreview(
                           practiceEditorRef.current,
                           practicePreviewRef.current,
-                          true,
+                          `<!DOCTYPE html>
+                          <html>
+                          <head>
+                              <style>
+                                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f8f9fa; }
+                                  {{CODE}}
+                              </style>
+                          </head>
+                          <body>
+                              <div class="product-card">
+                                  <div class="product-image"></div>
+                                  <div class="product-content">
+                                      <h3 class="product-title">Ноутбук Gaming Pro</h3>
+                                      <p class="product-description">Мощный игровой ноутбук с процессором Intel Core i7 и видеокартой NVIDIA RTX 3060.</p>
+                                      <div class="product-footer">
+                                          <div class="product-price">89 990 &#8381;</div>
+                                          <button class="add-to-cart">В корзину</button>
+                                      </div>
+                                  </div>
+                              </div>
+                          </body>
+                          </html>`,
                         )
                       }
                     />
@@ -995,123 +1191,126 @@ export default function MaterialDetailPage() {
                 </div>
               </div>
 
-              {/* Секция 7: Тест */}
+              {/* 7. Тест */}
               <div className="mb-12" id="quiz-section">
                 <h2 className="text-2xl font-bold mb-4 flex items-center gap-3">
                   <i className="fas fa-question-circle text-accent-blue"></i>
                   7. Тест на проверку знаний
                 </h2>
-                <p className="text-text-dim mb-6">
-                  Проверьте свои знания по теме Flexbox
-                </p>
-
-                {/* Вопрос 1 */}
                 <div className="mb-6 p-5 bg-accent-blue/5 rounded-lg border-l-4 border-accent-blue">
-                  <h3 className="font-bold mb-4 flex items-center gap-2">
-                    <i className="fas fa-question text-accent-blue"></i>
-                    Вопрос 1 из 3
+                  <h3 className="font-bold mb-4">
+                    Вопрос 1: создание flex-контейнера
                   </h3>
-                  <p className="mb-4">
-                    Какое свойство CSS используется для создания
-                    flex-контейнера?
-                  </p>
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-2">
                     {[
                       "display: flex",
                       "display: block",
                       "position: flex",
                       "layout: flex",
-                    ].map((option, idx) => (
+                    ].map((opt) => (
                       <button
-                        key={idx}
-                        className="w-full text-left p-3 bg-secondary-dark/50 border border-glass-border rounded hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
-                        onClick={() =>
-                          handleAnswerQuestion(1, option === "display: flex")
-                        }
+                        key={opt}
+                        onClick={() => handleAnswerQuestion(1, opt)}
+                        className={`w-full text-left p-3 rounded-lg transition ${
+                          quizSubmitted
+                            ? opt === "display: flex"
+                              ? "border-green-500 bg-green-500/20 text-green-300"
+                              : selectedAnswers[0] === opt
+                                ? "border-red-500 bg-red-500/20 text-red-300"
+                                : "opacity-50"
+                            : selectedAnswers[0] === opt
+                              ? "bg-accent-blue/20 border-accent-blue"
+                              : "bg-secondary-dark/50 border border-glass-border hover:bg-accent-blue/10"
+                        }`}
                       >
-                        {option}
+                        {opt}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {/* Вопрос 2 */}
                 <div className="mb-6 p-5 bg-accent-blue/5 rounded-lg border-l-4 border-accent-blue">
-                  <h3 className="font-bold mb-4 flex items-center gap-2">
-                    <i className="fas fa-question text-accent-blue"></i>
-                    Вопрос 2 из 3
+                  <h3 className="font-bold mb-4">
+                    Вопрос 2: направление главной оси
                   </h3>
-                  <p className="mb-4">
-                    Какое свойство определяет направление главной оси во
-                    flex-контейнере?
-                  </p>
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-2">
                     {[
                       "justify-content",
                       "flex-direction",
                       "align-items",
                       "flex-wrap",
-                    ].map((option, idx) => (
+                    ].map((opt) => (
                       <button
-                        key={idx}
-                        className="w-full text-left p-3 bg-secondary-dark/50 border border-glass-border rounded hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
-                        onClick={() =>
-                          handleAnswerQuestion(2, option === "flex-direction")
-                        }
+                        key={opt}
+                        onClick={() => handleAnswerQuestion(2, opt)}
+                        className={`w-full text-left p-3 rounded-lg transition ${
+                          quizSubmitted
+                            ? opt === "flex-direction"
+                              ? "border-green-500 bg-green-500/20 text-green-300"
+                              : selectedAnswers[1] === opt
+                                ? "border-red-500 bg-red-500/20 text-red-300"
+                                : "opacity-50"
+                            : selectedAnswers[1] === opt
+                              ? "bg-accent-blue/20 border-accent-blue"
+                              : "bg-secondary-dark/50 border border-glass-border hover:bg-accent-blue/10"
+                        }`}
                       >
-                        {option}
+                        {opt}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {/* Вопрос 3 */}
                 <div className="mb-8 p-5 bg-accent-blue/5 rounded-lg border-l-4 border-accent-blue">
-                  <h3 className="font-bold mb-4 flex items-center gap-2">
-                    <i className="fas fa-question text-accent-blue"></i>
-                    Вопрос 3 из 3
+                  <h3 className="font-bold mb-4">
+                    Вопрос 3: равномерное распределение с отступами
                   </h3>
-                  <p className="mb-4">
-                    Какой из следующих значений свойства{" "}
-                    <code>justify-content</code> равномерно распределяет
-                    элементы с отступами по краям?
-                  </p>
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-2">
                     {[
                       "space-between",
                       "space-evenly",
                       "space-around",
                       "center",
-                    ].map((option, idx) => (
+                    ].map((opt) => (
                       <button
-                        key={idx}
-                        className="w-full text-left p-3 bg-secondary-dark/50 border border-glass-border rounded hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
-                        onClick={() =>
-                          handleAnswerQuestion(3, option === "space-around")
-                        }
+                        key={opt}
+                        onClick={() => handleAnswerQuestion(3, opt)}
+                        className={`w-full text-left p-3 rounded-lg transition ${
+                          quizSubmitted
+                            ? opt === "space-around"
+                              ? "border-green-500 bg-green-500/20 text-green-300"
+                              : selectedAnswers[2] === opt
+                                ? "border-red-500 bg-red-500/20 text-red-300"
+                                : "opacity-50"
+                            : selectedAnswers[2] === opt
+                              ? "bg-accent-blue/20 border-accent-blue"
+                              : "bg-secondary-dark/50 border border-glass-border hover:bg-accent-blue/10"
+                        }`}
                       >
-                        {option}
+                        {opt}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {/* Результаты теста */}
                 <div className="text-center">
                   <button
                     onClick={handleSubmitQuiz}
-                    className="px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple hover:-translate-y-0.5 transition-all duration-300 mb-4"
+                    disabled={quizSubmitted}
+                    className="px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple transition disabled:opacity-50"
                   >
-                    <i className="fas fa-paper-plane mr-2"></i>
                     Завершить тест
                   </button>
-                  <p className="text-text-dim">
-                    Правильных ответов: {correctAnswersCount} из 3
-                  </p>
+                  {isMounted && (
+                    <p className="text-text-dim mt-4">
+                      Правильных ответов:{" "}
+                      {quizResults
+                        ? quizResults.filter(Boolean).length
+                        : selectedAnswers.filter((a) => a !== null).length}{" "}
+                      из 3
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Навигация по материалам */}
+              {/* Навигация между материалами */}
               <div className="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-glass-border">
                 {materialNeighbors.previous ? (
                   <Link

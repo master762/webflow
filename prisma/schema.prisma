@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  password        String
+  name            String   @default("Новый пользователь")
+  username        String?  @unique
+  bio             String   @default("Пользователь только начал обучение")
+  avatar          String   @default("/default-avatar.png")
+  title           String   @default("Новичок")
+  xp              Int      @default(0)
+  level           Int      @default(1)
+  streak          Int      @default(0)
+  topicsCompleted Int      @default(0)
+  topicsProgress  String   @default("[]")
+  achievements    String   @default("[]")
+  weeklyActivity  String   @default("[]")
+  createdAt       DateTime @default(now())
+  topicProgress   UserTopicProgress[]
+}
+
+model Topic {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String
+  category      String
+  difficulty    String
+  iconKey       String
+  lessons       Int
+  xpPerLesson   Int
+  requirements  String?
+  createdAt     DateTime @default(now())
+  progress      UserTopicProgress[]
+  levels        Level[]
+}
+
+model UserTopicProgress {
+  id        Int    @id @default(autoincrement())
+  userId    String
+  topicId   Int
+  progress  Int    @default(0)
+  completed Boolean @default(false)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic     Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  @@unique([userId, topicId])
+}
+
+model Level {
+  id          Int    @id @default(autoincrement())
+  topicId     Int
+  order       Int
+  title       String
+  description String
+  html        String
+  css         String
+  hint        String?
+  xp          Int
+  validation  String? // JSON‑строка с правилами проверки
+  topic       Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+}

@@ -1,26 +1,23 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
-import { getDB } from "@/lib/db";
+import { prisma } from "@/lib/db";
+
+type WeeklyActivity = { day: string; value: number };
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const { email, password, name, username } = await req.json();
 
-    const { username, email, password } = body;
-
-    if (!username || !email || !password) {
+    if (!email || !password || !username) {
       return NextResponse.json(
-        { error: "Заполните все поля" },
+        { error: "Email, password и username обязательны" },
         { status: 400 },
       );
     }
 
-    const db = await getDB();
-
-    const existingUser = await db.get(
-      "SELECT * FROM users WHERE email = ?",
-      email,
-    );
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
 
     if (existingUser) {
       return NextResponse.json(
@@ -31,20 +28,39 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await db.run(
-      `
-      INSERT INTO users (username, email, password)
-      VALUES (?, ?, ?)
-      `,
-      username,
-      email,
-      hashedPassword,
-    );
+    const defaultWeeklyActivity: WeeklyActivity[] = [
+      { day: "ПН", value: 0 },
+      { day: "ВТ", value: 0 },
+      { day: "СР", value: 0 },
+      { day: "ЧТ", value: 0 },
+      { day: "ПТ", value: 0 },
+      { day: "СБ", value: 0 },
+      { day: "ВС", value: 0 },
+    ];
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name: username,
+        username,
+
+        topicsProgress: "[]",
+        achievements: "[]",
+        weeklyActivity: JSON.stringify(defaultWeeklyActivity),
+      },
+    });
 
     return NextResponse.json({
-      message: "Регистрация успешна",
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+      },
     });
-  } catch (error) {
-    console.log(error);
+  } catch (err) {
+    return NextResponse.json({ error: "Ошибка регистрации" }, { status: 500 });
   }
 }

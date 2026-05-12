@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 interface TopicProgress {
   title: string;
@@ -17,9 +17,29 @@ interface Achievement {
   unlocked: boolean;
 }
 
+interface UserData {
+  id: string;
+  email: string;
+  name: string;
+  username: string | null;
+  bio: string;
+  avatar: string;
+  title: string;
+  xp: number;
+  level: number;
+  streak: number;
+  topicsCompleted: number;
+  topicsProgress: TopicProgress[];
+  achievements: Achievement[];
+  weeklyActivity: { day: string; value: number }[];
+  createdAt: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
-  const [userName, setUserName] = useState("Алексей Жуков");
+  const { data: session, status } = useSession();
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkThemeEnabled, setDarkThemeEnabled] = useState(true);
   const [language, setLanguage] = useState("Русский");
@@ -28,104 +48,41 @@ export default function ProfilePage() {
   >([]);
   const [messageIdCounter, setMessageIdCounter] = useState(0);
 
-  // Константы для профиля
-  const rank = "Мастер верстки";
-  const bio =
-    "Изучаю веб-разработку с 2022 года. Люблю создавать красивые и функциональные интерфейсы. На платформе CodeDuolingo уже 3 месяца.";
-  const streak = 42;
-  const topicsCompleted = 8;
-  const totalXP = 1245;
-  const level = 12;
-  const xpToNextLevel = 255;
-  const currentXp = 1245;
+  // Загрузка данных пользователя
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
 
-  // Прогресс по темам
-  const topicsProgress: TopicProgress[] = [
-    { title: "Основы HTML", percent: 100 },
-    { title: "Основы CSS", percent: 90 },
-    { title: "Flexbox", percent: 70 },
-    { title: "CSS Grid", percent: 40 },
-    { title: "Адаптивный дизайн", percent: 20 },
-  ];
+    if (session?.user?.email) {
+      fetchUserData();
+    }
+  }, [session, status, router]);
 
-  // Достижения
-  const achievements: Achievement[] = [
-    {
-      id: 1,
-      title: "Первые шаги",
-      description: "Завершил 5 уроков",
-      icon: "fa-rocket",
-      unlocked: true,
-    },
-    {
-      id: 2,
-      title: "Скоростное обучение",
-      description: "3 урока за день",
-      icon: "fa-bolt",
-      unlocked: true,
-    },
-    {
-      id: 3,
-      title: "Мастер HTML",
-      description: "Завершил HTML",
-      icon: "fa-code",
-      unlocked: true,
-    },
-    {
-      id: 4,
-      title: "Серия побед",
-      description: "10 заданий без ошибок",
-      icon: "fa-fire",
-      unlocked: true,
-    },
-    {
-      id: 5,
-      title: "Неделя усердия",
-      description: "7 дней подряд",
-      icon: "fa-calendar",
-      unlocked: true,
-    },
-    {
-      id: 6,
-      title: "Мастер верстки",
-      description: "Все темы CSS",
-      icon: "fa-crown",
-      unlocked: false,
-    },
-    {
-      id: 7,
-      title: "Легенда платформы",
-      description: "100 дней подряд",
-      icon: "fa-gem",
-      unlocked: false,
-    },
-    {
-      id: 8,
-      title: "Бесконечное обучение",
-      description: "Все материалы",
-      icon: "fa-infinity",
-      unlocked: false,
-    },
-  ];
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch("/api/user/profile");
+      if (!response.ok) throw new Error("Failed to fetch user data");
 
-  // Ежедневные цели
-  const dailyGoal = {
-    completed: 3,
-    total: 4,
-    percent: 75,
-    xpToday: 150,
+      const data = await response.json();
+
+      // Парсим JSON строки из базы данных
+      const parsedData: UserData = {
+        ...data,
+        topicsProgress: JSON.parse(data.topicsProgress || "[]"),
+        achievements: JSON.parse(data.achievements || "[]"),
+        weeklyActivity: JSON.parse(data.weeklyActivity || "[]"),
+      };
+
+      setUserData(parsedData);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      showMessage("Ошибка загрузки данных профиля", "error");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  // Активность за неделю
-  const weeklyActivity = [
-    { day: "ПН", value: 80 },
-    { day: "ВТ", value: 60 },
-    { day: "СР", value: 90 },
-    { day: "ЧТ", value: 70 },
-    { day: "ПТ", value: 95 },
-    { day: "СБ", value: 50 },
-    { day: "ВС", value: 30 },
-  ];
 
   // Показать сообщение
   const showMessage = useCallback(
@@ -141,14 +98,28 @@ export default function ProfilePage() {
     [messageIdCounter],
   );
 
-  // Обработчики действий
-  const handleEditProfile = useCallback(() => {
-    const newName = prompt("Введите новое имя:", userName);
+  // Обновление имени пользователя
+  const handleEditProfile = useCallback(async () => {
+    const newName = prompt("Введите новое имя:", userData?.name);
     if (newName && newName.trim() !== "") {
-      setUserName(newName);
-      showMessage("Имя профиля обновлено", "success");
+      try {
+        const response = await fetch("/api/user/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: newName }),
+        });
+
+        if (response.ok) {
+          setUserData((prev) => (prev ? { ...prev, name: newName } : null));
+          showMessage("Имя профиля обновлено", "success");
+        } else {
+          showMessage("Ошибка обновления имени", "error");
+        }
+      } catch (error) {
+        showMessage("Ошибка обновления имени", "error");
+      }
     }
-  }, [userName, showMessage]);
+  }, [userData?.name, showMessage]);
 
   const handleShareProfile = useCallback(async () => {
     if (navigator.share) {
@@ -163,7 +134,6 @@ export default function ProfilePage() {
         console.log("Ошибка при попытке поделиться:", err);
       }
     } else {
-      // Fallback для браузеров без поддержки Web Share API
       const profileUrl = window.location.href;
       try {
         await navigator.clipboard.writeText(profileUrl);
@@ -208,6 +178,8 @@ export default function ProfilePage() {
   }, [showMessage]);
 
   const handleExportData = useCallback(() => {
+    if (!userData) return;
+
     showMessage(
       "Подготовка данных для экспорта... Это может занять несколько секунд.",
       "info",
@@ -215,13 +187,14 @@ export default function ProfilePage() {
 
     setTimeout(() => {
       const exportData = {
-        user: userName,
-        level,
-        xp: totalXP,
-        topicsCompleted,
-        streak,
-        achievements: achievements.filter((a) => a.unlocked).length,
-        joined: "2023-01-15",
+        user: userData.name,
+        email: userData.email,
+        level: userData.level,
+        xp: userData.xp,
+        topicsCompleted: userData.topicsCompleted,
+        streak: userData.streak,
+        achievements: userData.achievements.filter((a) => a.unlocked).length,
+        joined: userData.createdAt,
       };
 
       const dataStr = JSON.stringify(exportData, null, 2);
@@ -237,7 +210,7 @@ export default function ProfilePage() {
 
       showMessage("Данные успешно экспортированы!", "success");
     }, 1500);
-  }, [userName, achievements, showMessage]);
+  }, [userData, showMessage]);
 
   const handleLogout = useCallback(async () => {
     if (confirm("Вы уверены, что хотите выйти из аккаунта?")) {
@@ -249,7 +222,7 @@ export default function ProfilePage() {
     (achievement: Achievement) => {
       if (!achievement.unlocked) {
         alert(
-          `Достижение &quot;${achievement.title}&quot; заблокировано.\n\nОписание: ${achievement.description}\n\nПродолжайте обучение, чтобы разблокировать это достижение!`,
+          `Достижение "${achievement.title}" заблокировано.\n\nОписание: ${achievement.description}\n\nПродолжайте обучение, чтобы разблокировать это достижение!`,
         );
       } else {
         showMessage(
@@ -263,29 +236,62 @@ export default function ProfilePage() {
 
   // Анимация при загрузке
   useEffect(() => {
-    const progressBars = document.querySelectorAll(".progress-animate");
-    progressBars.forEach((bar, index) => {
-      setTimeout(
-        () => {
-          const targetWidth = bar.getAttribute("data-width");
-          if (bar instanceof HTMLElement) {
-            bar.style.width = targetWidth || "0%";
-          }
-        },
-        index * 200 + 500,
-      );
-    });
+    if (!loading && userData) {
+      const progressBars = document.querySelectorAll(".progress-animate");
+      progressBars.forEach((bar, index) => {
+        setTimeout(
+          () => {
+            const targetWidth = bar.getAttribute("data-width");
+            if (bar instanceof HTMLElement) {
+              bar.style.width = targetWidth || "0%";
+            }
+          },
+          index * 200 + 500,
+        );
+      });
 
-    const levelFill = document.querySelector(".level-animate");
-    if (levelFill) {
-      setTimeout(() => {
-        const targetWidth = levelFill.getAttribute("data-width");
-        if (levelFill instanceof HTMLElement) {
-          levelFill.style.width = targetWidth || "0%";
-        }
-      }, 800);
+      const levelFill = document.querySelector(".level-animate");
+      if (levelFill) {
+        setTimeout(() => {
+          const targetWidth = levelFill.getAttribute("data-width");
+          if (levelFill instanceof HTMLElement) {
+            levelFill.style.width = targetWidth || "0%";
+          }
+        }, 800);
+      }
     }
-  }, []);
+  }, [loading, userData]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-primary-dark text-text-light flex items-center justify-center">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-accent-blue mb-4"></i>
+          <p>Загрузка профиля...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-primary-dark text-text-light flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-accent-red">Не удалось загрузить данные профиля</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-accent-blue text-white rounded-lg"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const xpToNextLevel = (userData.level + 1) * 100 - userData.xp;
+  const currentLevelXp = userData.xp % 100;
+  const levelProgress = (currentLevelXp / 100) * 100;
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
@@ -298,15 +304,6 @@ export default function ProfilePage() {
           to {
             opacity: 1;
             transform: translateY(0);
-          }
-        }
-
-        @keyframes rotate {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
           }
         }
       `}</style>
@@ -337,39 +334,45 @@ export default function ProfilePage() {
             {/* Аватар */}
             <div className="relative">
               <div className="w-36 h-36 md:w-40 md:h-40 rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-4xl md:text-5xl font-bold text-white border-4 border-accent-blue shadow-lg shadow-accent-blue/30">
-                AJ
+                {userData.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)}
               </div>
             </div>
 
             {/* Информация профиля */}
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl md:text-4xl font-bold mb-3">
-                {userName}
+                {userData.name}
               </h1>
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-linear-to-r from-accent-purple to-purple-700 text-white rounded-full font-semibold mb-4 border border-accent-purple shadow-lg shadow-accent-purple/30">
                 <i className="fas fa-crown"></i>
-                <span>{rank}</span>
+                <span>{userData.title}</span>
               </div>
 
-              <p className="text-text-dim text-lg mb-6 max-w-2xl">{bio}</p>
+              <p className="text-text-dim text-lg mb-6 max-w-2xl">
+                {userData.bio}
+              </p>
 
               {/* Статистика */}
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className="px-6 py-4 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-green transition-all duration-300 hover:-translate-y-1">
                   <div className="text-2xl font-bold text-accent-green">
-                    {streak}
+                    {userData.streak}
                   </div>
                   <div className="text-sm text-text-dim">Дней подряд</div>
                 </div>
                 <div className="px-6 py-4 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-blue transition-all duration-300 hover:-translate-y-1">
                   <div className="text-2xl font-bold text-accent-blue">
-                    {topicsCompleted}
+                    {userData.topicsCompleted}
                   </div>
                   <div className="text-sm text-text-dim">Тем завершено</div>
                 </div>
                 <div className="px-6 py-4 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-purple transition-all duration-300 hover:-translate-y-1">
                   <div className="text-2xl font-bold text-accent-purple">
-                    {totalXP.toLocaleString()}
+                    {userData.xp.toLocaleString()}
                   </div>
                   <div className="text-sm text-text-dim">Всего XP</div>
                 </div>
@@ -408,26 +411,35 @@ export default function ProfilePage() {
               </h3>
 
               <div className="space-y-5">
-                {topicsProgress.map((topic, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{topic.title}</span>
-                      <span className="text-accent-blue font-semibold">
-                        {topic.percent}%
-                      </span>
+                {userData.topicsProgress.length === 0 ? (
+                  <p className="text-text-dim text-sm">
+                    Прогресса по темам пока нет. Начни обучение, чтобы он
+                    появился
+                  </p>
+                ) : (
+                  userData.topicsProgress.map((topic, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{topic.title}</span>
+                        <span className="text-accent-blue font-semibold">
+                          {topic.percent}%
+                        </span>
+                      </div>
+
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full progress-animate"
+                          data-width={`${topic.percent}%`}
+                          style={{
+                            backgroundImage:
+                              "linear-gradient(to right, var(--accent-blue), var(--accent-purple))",
+                            width: "0%",
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-linear-to-r progress-animate"
-                        data-width={`${topic.percent}%`}
-                        style={{
-                          backgroundImage: `linear-gradient(to right, var(--accent-blue), var(--accent-purple))`,
-                          width: "0%",
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -439,19 +451,26 @@ export default function ProfilePage() {
               </h3>
 
               <div className="h-48 flex items-end justify-between gap-2">
-                {weeklyActivity.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col items-center flex-1"
-                  >
+                {userData.weeklyActivity.length === 0 ? (
+                  <p className="text-text-dim text-sm">
+                    Активность пока отсутствует
+                  </p>
+                ) : (
+                  userData.weeklyActivity.map((item, index) => (
                     <div
-                      className="w-full rounded-t-lg bg-linear-to-t from-accent-blue to-accent-purple transition-all duration-300 hover:opacity-80"
-                      style={{ height: `${item.value}%` }}
-                      title={`${item.value}% активности`}
-                    ></div>
-                    <div className="text-sm text-text-dim mt-2">{item.day}</div>
-                  </div>
-                ))}
+                      key={index}
+                      className="flex flex-col items-center flex-1"
+                    >
+                      <div
+                        className="w-full rounded-t-lg bg-linear-to-t from-accent-blue to-accent-purple"
+                        style={{ height: `${item.value}%` }}
+                      />
+                      <div className="text-sm text-text-dim mt-2">
+                        {item.day}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -463,92 +482,40 @@ export default function ProfilePage() {
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {achievements.map((achievement) => (
-                  <button
-                    key={achievement.id}
-                    onClick={() => handleAchievementClick(achievement)}
-                    className={`p-4 rounded-xl border border-glass-border text-center transition-all duration-300 cursor-pointer ${
-                      achievement.unlocked
-                        ? "hover:border-accent-yellow hover:shadow-lg hover:shadow-accent-yellow/20"
-                        : "opacity-50 grayscale"
-                    }`}
-                  >
-                    <div
-                      className={`w-16 h-16 mx-auto rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-2xl mb-3`}
+                {userData.achievements.length === 0 ? (
+                  <p className="text-text-dim text-sm col-span-4">
+                    Достижений пока нет — продолжай обучение
+                  </p>
+                ) : (
+                  userData.achievements.map((achievement) => (
+                    <button
+                      key={achievement.id}
+                      onClick={() => handleAchievementClick(achievement)}
+                      className={`p-4 rounded-xl border text-center transition-all duration-300 ${
+                        achievement.unlocked
+                          ? "hover:border-accent-yellow"
+                          : "opacity-50 grayscale"
+                      }`}
                     >
-                      <i className={`fas ${achievement.icon}`}></i>
-                    </div>
-                    <h4 className="font-semibold mb-1 text-sm">
-                      {achievement.title}
-                    </h4>
-                    <p className="text-xs text-text-dim">
-                      {achievement.description}
-                    </p>
-                  </button>
-                ))}
+                      <div className="w-16 h-16 mx-auto rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-2xl mb-3">
+                        <i className={`fas ${achievement.icon}`} />
+                      </div>
+
+                      <h4 className="font-semibold text-sm">
+                        {achievement.title}
+                      </h4>
+                      <p className="text-xs text-text-dim">
+                        {achievement.description}
+                      </p>
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </div>
 
           {/* Правая колонка - Боковая панель */}
           <div className="space-y-6">
-            {/* Ежедневная цель */}
-            <div className="glass-card rounded-xl p-6 border border-glass-border">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <i className="fas fa-bullseye text-accent-green"></i>
-                  <span>Ежедневная цель</span>
-                </h3>
-                <span className="text-accent-green font-semibold">
-                  {dailyGoal.percent}%
-                </span>
-              </div>
-
-              <div className="text-center mb-6">
-                <div className="relative w-32 h-32 mx-auto mb-4">
-                  <div className="absolute inset-0 rounded-full border-8 border-white/10"></div>
-                  <div
-                    className="absolute inset-0 rounded-full border-8 border-transparent"
-                    style={{
-                      borderTopColor: "var(--accent-green)",
-                      borderRightColor: "var(--accent-green)",
-                      transform: `rotate(${dailyGoal.percent * 3.6}deg)`,
-                      transition: "transform 1s ease",
-                    }}
-                  ></div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="text-3xl font-bold text-accent-green">
-                      {dailyGoal.percent}%
-                    </div>
-                    <div className="text-sm text-text-dim">Выполнено</div>
-                  </div>
-                </div>
-                <p className="text-text-dim text-sm">
-                  Выполнено {dailyGoal.completed} из {dailyGoal.total}{" "}
-                  ежедневных целей
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-glass-border">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-accent-green">
-                    {dailyGoal.completed}
-                  </div>
-                  <div className="text-xs text-text-dim">Выполнено</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold">{dailyGoal.total}</div>
-                  <div className="text-xs text-text-dim">Всего целей</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-accent-blue">
-                    {dailyGoal.xpToday}
-                  </div>
-                  <div className="text-xs text-text-dim">XP за день</div>
-                </div>
-              </div>
-            </div>
-
             {/* Уровень и ранг */}
             <div className="glass-card rounded-xl p-6 border border-glass-border">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -558,10 +525,10 @@ export default function ProfilePage() {
 
               <div className="flex items-center gap-4 mb-6">
                 <div className="text-5xl font-bold text-accent-blue">
-                  {level}
+                  {userData.level}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-lg">{rank}</h4>
+                  <h4 className="font-semibold text-lg">{userData.title}</h4>
                   <p className="text-text-dim text-sm">
                     Следующий уровень через {xpToNextLevel} XP
                   </p>
@@ -570,27 +537,16 @@ export default function ProfilePage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Текущий XP: {currentXp.toLocaleString()}</span>
+                  <span>Текущий XP: {userData.xp.toLocaleString()}</span>
                   <span>До след. уровня: {xpToNextLevel}</span>
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full bg-linear-to-r from-accent-blue to-accent-purple level-animate"
-                    data-width={`${(currentXp % 1000) / 10}%`}
+                    data-width={`${levelProgress}%`}
                     style={{ width: "0%" }}
                   ></div>
                 </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-accent-blue/5 rounded-lg border-l-4 border-accent-blue">
-                <h4 className="font-semibold mb-2 text-accent-blue flex items-center gap-2">
-                  <i className="fas fa-lightbulb"></i>
-                  <span>Совет для роста</span>
-                </h4>
-                <p className="text-sm text-text-dim">
-                  Завершите тему &quot;CSS Grid&quot; до 80%, чтобы получить
-                  бонусные 100 XP и быстрее перейти на следующий уровень.
-                </p>
               </div>
             </div>
 
@@ -625,32 +581,6 @@ export default function ProfilePage() {
                     className="text-accent-blue hover:text-accent-purple transition-colors"
                   >
                     {darkThemeEnabled ? "Включена" : "Выключена"}
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-glass-border">
-                  <div className="flex items-center gap-3">
-                    <i className="fas fa-language text-text-dim"></i>
-                    <span>Язык</span>
-                  </div>
-                  <button
-                    onClick={handleChangeLanguage}
-                    className="text-accent-blue hover:text-accent-purple transition-colors"
-                  >
-                    {language}
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-glass-border">
-                  <div className="flex items-center gap-3">
-                    <i className="fas fa-shield-alt text-text-dim"></i>
-                    <span>Безопасность</span>
-                  </div>
-                  <button
-                    onClick={handleSecuritySettings}
-                    className="text-accent-blue hover:text-accent-purple transition-colors"
-                  >
-                    Изменить пароль
                   </button>
                 </div>
 
