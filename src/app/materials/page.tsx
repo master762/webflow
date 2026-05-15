@@ -38,7 +38,8 @@ const typeBadges: Record<
   },
   cheatsheet: {
     label: "Шпаргалка",
-    className: "bg-accent-green/20 text-accent-green border border-accent-green",
+    className:
+      "bg-accent-green/20 text-accent-green border border-accent-green",
     icon: "fas fa-download",
   },
   interactive: {
@@ -162,10 +163,7 @@ export default function MaterialsPage() {
 
     return materials
       .filter((material) => {
-        if (
-          activeCategory !== "all" &&
-          material.category !== activeCategory
-        ) {
+        if (activeCategory !== "all" && material.category !== activeCategory) {
           return false;
         }
 
@@ -318,7 +316,6 @@ export default function MaterialsPage() {
               {[
                 { value: "all", label: "Все материалы" },
                 { value: "unlocked", label: "Только доступные" },
-                { value: "locked", label: "Только заблокированные" },
               ].map((option) => (
                 <label
                   key={option.value}
@@ -374,16 +371,6 @@ export default function MaterialsPage() {
                     </span>
                   </button>
                 ))}
-              </div>
-
-              <div className="p-4 bg-accent-blue/5 rounded-lg border-l-4 border-accent-blue">
-                <h4 className="font-bold mb-2 text-accent-blue flex items-center gap-2">
-                  <i className="fas fa-route"></i> Структура
-                </h4>
-                <p className="text-sm text-text-dim leading-relaxed">
-                  Детальная страница строится по схеме: Главная / Материалы /
-                  Категория / Название материала.
-                </p>
               </div>
             </div>
           </div>
@@ -597,9 +584,7 @@ export default function MaterialsPage() {
             {paginatedMaterials.length === 0 && (
               <div className="text-center py-12">
                 <i className="fas fa-search text-4xl text-text-dim mb-4"></i>
-                <h3 className="text-xl font-bold mb-2">
-                  Материалы не найдены
-                </h3>
+                <h3 className="text-xl font-bold mb-2">Материалы не найдены</h3>
                 <p className="text-text-dim">
                   Попробуйте изменить параметры фильтрации или очистить поиск.
                 </p>

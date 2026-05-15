@@ -110,14 +110,13 @@ export default function Home() {
         </p>
 
         <Link
-          href={isLoggedIn ? "/topics" : "/auth/register"}
+          href={isLoggedIn ? "/topics" : "/auth"}
           className="inline-block px-8 py-4 gradient-bg text-white font-semibold rounded-lg shadow-lg hover:-translate-y-1 transition-all"
         >
           Начать обучение
         </Link>
       </section>
 
-      {/* 🚫 если нет сессии — только hero */}
       {!isLoggedIn ? null : (
         <>
           {/* ПРОГРЕСС */}
@@ -157,7 +156,7 @@ export default function Home() {
               </div>
             ) : (
               <p className="text-text-dim text-center">
-                Пока нет достижений — начни обучение 🚀
+                Пока нет достижений — начни обучение
               </p>
             )}
           </section>

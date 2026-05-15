@@ -440,28 +440,21 @@ export default function TopicsPage() {
         </div>
 
         {/* Сетка карточек тем */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {filteredTopics.map((topic, index) => (
             <div
               key={topic.id}
-              className={`glass-card rounded-xl p-6 border border-glass-border flex flex-col transition-all duration-300 ${
-                topic.locked
-                  ? "opacity-70 grayscale"
-                  : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-2"
-              } ${topic.completed ? "relative" : ""}`}
+              className={`
+                glass-card rounded-xl p-6 border flex flex-col transition-all duration-300 relative
+                ${topic.locked ? "opacity-70 grayscale" : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-2"}
+                ${topic.completed ? "border-accent-green bg-accent-green/5 shadow-md" : "border-glass-border"}
+              `}
               style={{ animation: `slideIn 0.5s ease ${index * 0.1}s both` }}
               onClick={
                 topic.locked ? () => handleLockedTopicClick(topic) : undefined
               }
             >
-              {/* Галочка завершения */}
-              {topic.completed && (
-                <>
-                  <div className="absolute top-0 right-0 w-0 h-0 border-t-60px border-r-60px border-t-transparent border-r-accent-green"></div>
-                  <i className="fas fa-check absolute top-2 right-2 text-black text-sm"></i>
-                </>
-              )}
-
               {/* Иконка блокировки */}
               {topic.locked && (
                 <i className="fas fa-lock text-accent-red text-xl absolute top-5 right-5"></i>
@@ -513,7 +506,11 @@ export default function TopicsPage() {
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-linear-to-r from-accent-blue to-accent-purple progress-animate"
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      topic.completed
+                        ? "bg-accent-green"
+                        : "bg-linear-to-r from-accent-blue to-accent-purple"
+                    } progress-animate`}
                     data-width={`${topic.progress}%`}
                     style={{ width: "0%" }}
                   ></div>
@@ -542,7 +539,11 @@ export default function TopicsPage() {
                   <>
                     <Link
                       href={getTopicHref(topic)}
-                      className="flex-1 px-4 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple transition-all duration-300 flex items-center justify-center gap-2"
+                      className={`flex-1 px-4 py-3 font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                        topic.completed
+                          ? "bg-accent-green/20 text-accent-green border border-accent-green hover:bg-accent-green/30"
+                          : "bg-linear-to-r from-accent-blue to-accent-purple text-white hover:shadow-neon-purple"
+                      }`}
                     >
                       <i className="fas fa-play-circle"></i>
                       {topic.completed
@@ -566,17 +567,17 @@ export default function TopicsPage() {
             </div>
           ))}
         </div>
-
-        {filteredTopics.length === 0 && (
-          <div className="text-center py-12 glass-card rounded-xl border border-glass-border">
-            <i className="fas fa-search text-4xl text-text-dim mb-4"></i>
-            <h3 className="text-xl font-bold mb-2">Темы не найдены</h3>
-            <p className="text-text-dim">
-              Попробуйте изменить параметры фильтрации или очистить поиск
-            </p>
-          </div>
-        )}
       </div>
+
+      {filteredTopics.length === 0 && (
+        <div className="text-center py-12 glass-card rounded-xl border border-glass-border">
+          <i className="fas fa-search text-4xl text-text-dim mb-4"></i>
+          <h3 className="text-xl font-bold mb-2">Темы не найдены</h3>
+          <p className="text-text-dim">
+            Попробуйте изменить параметры фильтрации или очистить поиск
+          </p>
+        </div>
+      )}
     </div>
   );
 }

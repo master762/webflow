@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { PrismaClient } from "@prisma/client";
+import { updateUserLevel } from "@/lib/levelUtils";
+import { checkAndUnlockAchievements } from "@/lib/achievements";
 
 const prisma = new PrismaClient();
 
-/**
- * GET: получить все темы + уровни + прогресс пользователя
- */
 export async function GET() {
   const session = await getServerSession();
 
@@ -15,34 +14,26 @@ export async function GET() {
   }
 
   const user = await prisma.user.findUnique({
-    where: {
-      email: session.user.email,
-    },
+    where: { email: session.user.email },
   });
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // 🔥 получаем темы вместе с уровнями
+  // Получаем темы вместе с уровнями
   const topics = await prisma.topic.findMany({
     include: {
       levels: {
-        orderBy: {
-          order: "asc",
-        },
+        orderBy: { order: "asc" },
       },
     },
-    orderBy: {
-      id: "asc",
-    },
+    orderBy: { id: "asc" },
   });
 
-  // 🔥 прогресс пользователя
+  // Прогресс пользователя по темам
   const progressRows = await prisma.userTopicProgress.findMany({
-    where: {
-      userId: user.id,
-    },
+    where: { userId: user.id },
   });
 
   const progressMap = progressRows.map((p) => ({
@@ -57,9 +48,6 @@ export async function GET() {
   });
 }
 
-/**
- * PATCH: обновить прогресс темы
- */
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession();
 
@@ -68,7 +56,6 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-
   const { topicId, progress } = body;
 
   if (typeof topicId !== "number" || typeof progress !== "number") {
@@ -76,15 +63,27 @@ export async function PATCH(req: NextRequest) {
   }
 
   const user = await prisma.user.findUnique({
-    where: {
-      email: session.user.email,
-    },
+    where: { email: session.user.email },
   });
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  // Получаем старую запись прогресса, чтобы понять, была ли тема уже завершена
+  const oldProgress = await prisma.userTopicProgress.findUnique({
+    where: {
+      userId_topicId: {
+        userId: user.id,
+        topicId,
+      },
+    },
+  });
+
+  const wasCompleted = oldProgress?.completed === true;
+  const isNowCompleted = progress >= 100;
+
+  // Обновляем прогресс темы
   const updated = await prisma.userTopicProgress.upsert({
     where: {
       userId_topicId: {
@@ -94,15 +93,29 @@ export async function PATCH(req: NextRequest) {
     },
     update: {
       progress,
-      completed: progress >= 100,
+      completed: isNowCompleted,
     },
     create: {
       userId: user.id,
       topicId,
       progress,
-      completed: progress >= 100,
+      completed: isNowCompleted,
     },
   });
+
+  // Если тема только что завершена (была не завершена, а стала завершена)
+  if (isNowCompleted && !wasCompleted) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        topicsCompleted: { increment: 1 },
+        xp: { increment: 50 }, // бонус за тему
+      },
+    });
+    // Обновляем уровень и достижения
+    await updateUserLevel(user.id);
+    await checkAndUnlockAchievements(user.id);
+  }
 
   return NextResponse.json(updated);
 }

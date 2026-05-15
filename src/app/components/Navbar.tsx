@@ -17,6 +17,16 @@ export default function Navbar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === href : pathname.startsWith(href);
 
+  // Функция для получения инициалов (до 2 букв)
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(10,10,20,0.95)] backdrop-blur-sm border-b border-glass-border py-4 shadow-lg shadow-black/30">
       <div className="container mx-auto px-4 max-w-7xl">
@@ -53,7 +63,6 @@ export default function Navbar() {
               XP: 1,245
             </div>
 
-            {/* 👇 LOGIC */}
             {!session ? (
               <Link
                 href="/auth"
@@ -62,12 +71,10 @@ export default function Navbar() {
                 Войти
               </Link>
             ) : (
-              <Link href="/profile" className="flex items-center gap-2">
-                <img
-                  src="/default-avatar.png"
-                  alt="avatar"
-                  className="w-9 h-9 rounded-full border border-accent-blue shadow-neon-blue"
-                />
+              <Link href="/profile" className="relative group">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-sm font-bold border border-accent-blue shadow-lg shadow-accent-blue/30 transition-all duration-300 hover:scale-105">
+                  {getInitials(session.user?.name || "Пользователь")}
+                </div>
               </Link>
             )}
           </div>

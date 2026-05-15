@@ -40,9 +40,6 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkThemeEnabled, setDarkThemeEnabled] = useState(true);
-  const [language, setLanguage] = useState("Русский");
   const [messages, setMessages] = useState<
     Array<{ id: number; text: string; type: "success" | "error" | "info" }>
   >([]);
@@ -54,7 +51,6 @@ export default function ProfilePage() {
       router.push("/auth/signin");
       return;
     }
-
     if (session?.user?.email) {
       fetchUserData();
     }
@@ -67,14 +63,17 @@ export default function ProfilePage() {
 
       const data = await response.json();
 
-      // Парсим JSON строки из базы данных
       const parsedData: UserData = {
         ...data,
         topicsProgress: JSON.parse(data.topicsProgress || "[]"),
         achievements: JSON.parse(data.achievements || "[]"),
-        weeklyActivity: JSON.parse(data.weeklyActivity || "[]"),
+        weeklyActivity: JSON.parse(data.weeklyActivity || "[]").map(
+          (item: any) => ({
+            day: item.day,
+            value: Number(item.value),
+          }),
+        ),
       };
-
       setUserData(parsedData);
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -84,13 +83,11 @@ export default function ProfilePage() {
     }
   };
 
-  // Показать сообщение
   const showMessage = useCallback(
     (text: string, type: "success" | "error" | "info") => {
       const id = messageIdCounter + 1;
       setMessageIdCounter(id);
       setMessages((prev) => [...prev, { id, text, type }]);
-
       setTimeout(() => {
         setMessages((prev) => prev.filter((msg) => msg.id !== id));
       }, 3000);
@@ -98,7 +95,6 @@ export default function ProfilePage() {
     [messageIdCounter],
   );
 
-  // Обновление имени пользователя
   const handleEditProfile = useCallback(async () => {
     const newName = prompt("Введите новое имя:", userData?.name);
     if (newName && newName.trim() !== "") {
@@ -108,83 +104,44 @@ export default function ProfilePage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: newName }),
         });
-
         if (response.ok) {
           setUserData((prev) => (prev ? { ...prev, name: newName } : null));
           showMessage("Имя профиля обновлено", "success");
         } else {
           showMessage("Ошибка обновления имени", "error");
         }
-      } catch (error) {
+      } catch {
         showMessage("Ошибка обновления имени", "error");
       }
     }
   }, [userData?.name, showMessage]);
 
   const handleShareProfile = useCallback(async () => {
+    const profileUrl = window.location.href;
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Мой профиль на CodeDuolingo",
-          text: "Посмотрите мой прогресс в изучении HTML и CSS на CodeDuolingo!",
-          url: window.location.href,
+          text: "Посмотрите мой прогресс в изучении HTML и CSS!",
+          url: profileUrl,
         });
         showMessage("Профиль успешно отправлен!", "success");
-      } catch (err) {
-        console.log("Ошибка при попытке поделиться:", err);
+      } catch {
+        // пользователь отменил – ничего не делаем
       }
     } else {
-      const profileUrl = window.location.href;
       try {
         await navigator.clipboard.writeText(profileUrl);
-        showMessage("Ссылка на профиль скопирована в буфер обмена!", "info");
-      } catch (err) {
+        showMessage("Ссылка на профиль скопирована!", "info");
+      } catch {
         showMessage("Не удалось скопировать ссылку", "error");
       }
     }
   }, [showMessage]);
 
-  const handleToggleNotifications = useCallback(() => {
-    setNotificationsEnabled(!notificationsEnabled);
-    showMessage(
-      `Уведомления ${!notificationsEnabled ? "включены" : "выключены"}`,
-      "info",
-    );
-  }, [notificationsEnabled, showMessage]);
-
-  const handleToggleTheme = useCallback(() => {
-    setDarkThemeEnabled(!darkThemeEnabled);
-    showMessage(
-      `Темная тема ${!darkThemeEnabled ? "включена" : "выключена"}`,
-      "info",
-    );
-  }, [darkThemeEnabled, showMessage]);
-
-  const handleChangeLanguage = useCallback(() => {
-    const languages = ["Русский", "English", "Español", "Deutsch"];
-    const currentIndex = languages.indexOf(language);
-    const nextIndex = (currentIndex + 1) % languages.length;
-    setLanguage(languages[nextIndex]);
-    showMessage(`Язык изменен на ${languages[nextIndex]}`, "info");
-  }, [language, showMessage]);
-
-  const handleSecuritySettings = useCallback(() => {
-    const newPassword = prompt("Введите новый пароль (минимум 8 символов):");
-    if (newPassword && newPassword.length >= 8) {
-      showMessage("Пароль успешно изменен!", "success");
-    } else if (newPassword) {
-      showMessage("Пароль слишком короткий. Минимум 8 символов.", "error");
-    }
-  }, [showMessage]);
-
   const handleExportData = useCallback(() => {
     if (!userData) return;
-
-    showMessage(
-      "Подготовка данных для экспорта... Это может занять несколько секунд.",
-      "info",
-    );
-
+    showMessage("Подготовка данных для экспорта...", "info");
     setTimeout(() => {
       const exportData = {
         user: userData.name,
@@ -196,18 +153,15 @@ export default function ProfilePage() {
         achievements: userData.achievements.filter((a) => a.unlocked).length,
         joined: userData.createdAt,
       };
-
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataUri =
         "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-
       const link = document.createElement("a");
       link.setAttribute("href", dataUri);
       link.setAttribute("download", "codeduolingo-progress.json");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
       showMessage("Данные успешно экспортированы!", "success");
     }, 1500);
   }, [userData, showMessage]);
@@ -234,7 +188,7 @@ export default function ProfilePage() {
     [showMessage],
   );
 
-  // Анимация при загрузке
+  // Анимация прогресс‑баров
   useEffect(() => {
     if (!loading && userData) {
       const progressBars = document.querySelectorAll(".progress-animate");
@@ -249,14 +203,11 @@ export default function ProfilePage() {
           index * 200 + 500,
         );
       });
-
       const levelFill = document.querySelector(".level-animate");
-      if (levelFill) {
+      if (levelFill instanceof HTMLElement) {
         setTimeout(() => {
           const targetWidth = levelFill.getAttribute("data-width");
-          if (levelFill instanceof HTMLElement) {
-            levelFill.style.width = targetWidth || "0%";
-          }
+          levelFill.style.width = targetWidth || "0%";
         }, 800);
       }
     }
@@ -308,7 +259,6 @@ export default function ProfilePage() {
         }
       `}</style>
 
-      {/* Сообщения */}
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -329,9 +279,7 @@ export default function ProfilePage() {
         {/* Шапка профиля */}
         <div className="my-8 p-8 glass-card rounded-2xl relative overflow-hidden border border-glass-border">
           <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-accent-blue to-accent-purple"></div>
-
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
-            {/* Аватар */}
             <div className="relative">
               <div className="w-36 h-36 md:w-40 md:h-40 rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-4xl md:text-5xl font-bold text-white border-4 border-accent-blue shadow-lg shadow-accent-blue/30">
                 {userData.name
@@ -341,8 +289,6 @@ export default function ProfilePage() {
                   .slice(0, 2)}
               </div>
             </div>
-
-            {/* Информация профиля */}
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl md:text-4xl font-bold mb-3">
                 {userData.name}
@@ -351,12 +297,9 @@ export default function ProfilePage() {
                 <i className="fas fa-crown"></i>
                 <span>{userData.title}</span>
               </div>
-
               <p className="text-text-dim text-lg mb-6 max-w-2xl">
                 {userData.bio}
               </p>
-
-              {/* Статистика */}
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className="px-6 py-4 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-green transition-all duration-300 hover:-translate-y-1">
                   <div className="text-2xl font-bold text-accent-green">
@@ -378,28 +321,23 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-
-            {/* Действия */}
             <div className="flex flex-col gap-3">
               <button
                 onClick={handleEditProfile}
                 className="px-6 py-3 bg-secondary-dark/50 border border-glass-border rounded-lg text-text-light hover:bg-accent-blue/10 hover:border-accent-blue hover:text-accent-blue transition-all duration-300 flex items-center justify-center gap-2"
               >
-                <i className="fas fa-edit"></i>
-                <span>Редактировать</span>
+                <i className="fas fa-edit"></i> Редактировать
               </button>
               <button
                 onClick={handleShareProfile}
                 className="px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-lg hover:shadow-accent-purple/30 transition-all duration-300 flex items-center justify-center gap-2"
               >
-                <i className="fas fa-share-alt"></i>
-                <span>Поделиться</span>
+                <i className="fas fa-share-alt"></i> Поделиться
               </button>
             </div>
           </div>
         </div>
 
-        {/* Основной контент */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
           {/* Левая колонка - Прогресс */}
           <div className="lg:col-span-2 space-y-6">
@@ -409,7 +347,6 @@ export default function ProfilePage() {
                 <i className="fas fa-chart-line text-accent-blue"></i>
                 <span>Прогресс по темам</span>
               </h3>
-
               <div className="space-y-5">
                 {userData.topicsProgress.length === 0 ? (
                   <p className="text-text-dim text-sm">
@@ -425,7 +362,6 @@ export default function ProfilePage() {
                           {topic.percent}%
                         </span>
                       </div>
-
                       <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full progress-animate"
@@ -447,29 +383,43 @@ export default function ProfilePage() {
             <div className="glass-card rounded-xl p-6 border border-glass-border">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <i className="fas fa-calendar-alt text-accent-blue"></i>
-                <span>Активность за неделю</span>
+                <span>Активность за неделю (минуты)</span>
               </h3>
-
-              <div className="h-48 flex items-end justify-between gap-2">
+              <div className="flex items-end justify-between gap-2 h-64 bg-secondary-dark/20 rounded-lg p-2">
                 {userData.weeklyActivity.length === 0 ? (
-                  <p className="text-text-dim text-sm">
-                    Активность пока отсутствует
+                  <p className="text-text-dim text-sm w-full text-center">
+                    Нет данных
                   </p>
                 ) : (
-                  userData.weeklyActivity.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex flex-col items-center flex-1"
-                    >
-                      <div
-                        className="w-full rounded-t-lg bg-linear-to-t from-accent-blue to-accent-purple"
-                        style={{ height: `${item.value}%` }}
-                      />
-                      <div className="text-sm text-text-dim mt-2">
-                        {item.day}
-                      </div>
-                    </div>
-                  ))
+                  (() => {
+                    const maxValue = Math.max(
+                      ...userData.weeklyActivity.map((v) => v.value),
+                    );
+                    return userData.weeklyActivity.map((item, idx) => {
+                      const barHeight =
+                        maxValue > 0 ? (item.value / maxValue) * 200 : 0;
+                      return (
+                        <div
+                          key={idx}
+                          className="flex flex-col items-center flex-1"
+                        >
+                          <div
+                            className="w-full bg-accent-blue rounded-t-lg transition-all duration-500"
+                            style={{
+                              height: `${barHeight}px`,
+                              minHeight: item.value > 0 ? "4px" : "0px",
+                            }}
+                          />
+                          <div className="text-sm text-text-dim mt-2">
+                            {item.day}
+                          </div>
+                          <div className="text-xs text-accent-blue font-medium mt-1">
+                            {item.value} мин
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()
                 )}
               </div>
             </div>
@@ -480,7 +430,6 @@ export default function ProfilePage() {
                 <i className="fas fa-trophy text-accent-yellow"></i>
                 <span>Достижения</span>
               </h3>
-
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {userData.achievements.length === 0 ? (
                   <p className="text-text-dim text-sm col-span-4">
@@ -500,7 +449,6 @@ export default function ProfilePage() {
                       <div className="w-16 h-16 mx-auto rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-2xl mb-3">
                         <i className={`fas ${achievement.icon}`} />
                       </div>
-
                       <h4 className="font-semibold text-sm">
                         {achievement.title}
                       </h4>
@@ -522,7 +470,6 @@ export default function ProfilePage() {
                 <i className="fas fa-arrow-up text-accent-blue"></i>
                 <span>Уровень и ранг</span>
               </h3>
-
               <div className="flex items-center gap-4 mb-6">
                 <div className="text-5xl font-bold text-accent-blue">
                   {userData.level}
@@ -534,7 +481,6 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Текущий XP: {userData.xp.toLocaleString()}</span>
@@ -545,45 +491,18 @@ export default function ProfilePage() {
                     className="h-full rounded-full bg-linear-to-r from-accent-blue to-accent-purple level-animate"
                     data-width={`${levelProgress}%`}
                     style={{ width: "0%" }}
-                  ></div>
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Настройки профиля */}
+            {/* Настройки профиля (только экспорт и выход) */}
             <div className="glass-card rounded-xl p-6 border border-glass-border">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <i className="fas fa-cog text-accent-blue"></i>
                 <span>Настройки профиля</span>
               </h3>
-
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-3 border-b border-glass-border">
-                  <div className="flex items-center gap-3">
-                    <i className="fas fa-bell text-text-dim"></i>
-                    <span>Уведомления</span>
-                  </div>
-                  <button
-                    onClick={handleToggleNotifications}
-                    className="text-accent-blue hover:text-accent-purple transition-colors"
-                  >
-                    {notificationsEnabled ? "Включено" : "Выключено"}
-                  </button>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-glass-border">
-                  <div className="flex items-center gap-3">
-                    <i className="fas fa-moon text-text-dim"></i>
-                    <span>Темная тема</span>
-                  </div>
-                  <button
-                    onClick={handleToggleTheme}
-                    className="text-accent-blue hover:text-accent-purple transition-colors"
-                  >
-                    {darkThemeEnabled ? "Включена" : "Выключена"}
-                  </button>
-                </div>
-
                 <div className="flex justify-between items-center py-3 border-b border-glass-border">
                   <div className="flex items-center gap-3">
                     <i className="fas fa-download text-text-dim"></i>
@@ -596,7 +515,6 @@ export default function ProfilePage() {
                     Скачать прогресс
                   </button>
                 </div>
-
                 <div className="flex justify-between items-center py-3">
                   <div className="flex items-center gap-3">
                     <i className="fas fa-sign-out-alt text-accent-red"></i>

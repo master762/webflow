@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/components/Footer";
 import Providers from "./providers";
+import SessionTracker from "@/app/components/SessionTracker";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
@@ -32,6 +33,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {children}
+          <SessionTracker />
         </Providers>
       </body>
     </html>

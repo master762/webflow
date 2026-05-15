@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { PrismaClient } from "@prisma/client";
+import { updateUserLevel } from "@/lib/levelUtils";
+import { checkAndUnlockAchievements } from "@/lib/achievements";
 
 const prisma = new PrismaClient();
 
@@ -44,7 +46,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Сколько уроков уже пройдено? (вычисляем из процента)
   let completedLessons = 0;
   if (progressRecord) {
     completedLessons = Math.round(
@@ -52,7 +53,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Рассчитаем новый прогресс: добавляем 1 урок
   const newCompletedLessons = completedLessons + 1;
   const newProgress = Math.min(
     100,
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   );
   const completed = newProgress >= 100;
 
-  // Обновляем или создаём запись прогресса
+  // Обновляем прогресс темы
   await prisma.userTopicProgress.upsert({
     where: {
       userId_topicId: {
@@ -80,7 +80,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // 3. Начисляем XP за уровень (если уровень ещё не был пройден)
   let xpAwarded = 0;
   if (newCompletedLessons > completedLessons) {
     xpAwarded = level.xp;
@@ -92,9 +91,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 4. Если тема завершена только что (completed стала true, а раньше была false)
+  // Если тема завершена только что, начисляем бонус и увеличиваем счётчик тем
   if (completed && (!progressRecord || !progressRecord.completed)) {
-    // Дополнительный бонус за тему (50 XP)
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -103,6 +101,10 @@ export async function POST(req: NextRequest) {
       },
     });
   }
+
+  // Обновляем уровень и достижения
+  await updateUserLevel(user.id);
+  await checkAndUnlockAchievements(user.id);
 
   return NextResponse.json({
     success: true,
