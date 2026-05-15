@@ -31,6 +31,10 @@ export async function GET(req: NextRequest) {
         achievements: true,
         weeklyActivity: true,
         createdAt: true,
+        banReason: true,
+        role: {
+          select: { name: true },
+        },
       },
     });
 

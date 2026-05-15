@@ -100,6 +100,15 @@ async function main() {
   await prisma.topic.createMany({ data: topics });
   const dbTopics = await prisma.topic.findMany();
 
+  const roles = [
+    { id: 1, name: "user", description: "Обычный пользователь" },
+    { id: 2, name: "subscriber", description: "Платный подписчик" },
+    { id: 3, name: "banned", description: "Заблокированный пользователь" },
+    { id: 4, name: "admin", description: "Администратор" },
+    { id: 5, name: "teacher", description: "Наставник" },
+    { id: 6, name: "employer", description: "Работодатель" },
+  ];
+  await prisma.role.createMany({ data: roles });
   // ======================
   // LEVELS with VALIDATION
   // ======================

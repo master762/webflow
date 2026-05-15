@@ -23,14 +23,22 @@ export async function GET() {
 
   // Получаем темы вместе с уровнями
   const topics = await prisma.topic.findMany({
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      difficulty: true,
+      iconKey: true,
+      lessons: true,
+      xpPerLesson: true,
+      requirements: true,
+      accessLevel: true,
       levels: {
         orderBy: { order: "asc" },
       },
     },
-    orderBy: { id: "asc" },
   });
-
   // Прогресс пользователя по темам
   const progressRows = await prisma.userTopicProgress.findMany({
     where: { userId: user.id },

@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         password: hashedPassword,
         name: username,
         username,
-
+        roleId: 1,
         topicsProgress: "[]",
         achievements: "[]",
         weeklyActivity: JSON.stringify(defaultWeeklyActivity),

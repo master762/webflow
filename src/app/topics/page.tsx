@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-
+import { useSession } from "next-auth/react";
 // Типы данных из БД
 type Difficulty = "beginner" | "intermediate" | "advanced" | "expert";
 type Category = "html" | "css" | "js" | "projects";
@@ -31,6 +31,7 @@ interface TopicFromDB {
 
   xp?: number;
   requirements?: string | null;
+  accessLevel?: string;
 }
 
 interface UserProgress {
@@ -51,6 +52,10 @@ type Level = {
   xp: number;
 };
 export default function TopicsPage() {
+  console.log("SESSION:", useSession());
+  const { data: session, status } = useSession();
+
+  const roleId = session?.user?.roleId;
   // Данные из API
   const [topics, setTopics] = useState<TopicFromDB[]>([]);
   const [progress, setProgress] = useState<UserProgress[]>([]);
@@ -113,32 +118,19 @@ export default function TopicsPage() {
   };
 
   // Логика блокировки (из второго варианта)
-  const isLocked = (
-    topic: TopicFromDB,
-    allTopics: TopicFromDB[],
-    progressMap: Map<number, number>,
-  ) => {
-    if (!topic.requirements) return false;
-    const req = topic.requirements;
-    if (!req) return false;
-    // Проверка требований к HTML
-    if (req.includes("HTML")) {
-      const htmlTopic = allTopics.find((t) => t.category === "html");
-      if (!htmlTopic) return true;
-      const prog = progressMap.get(htmlTopic.id) ?? 0;
-      return prog < 80;
+  const isLocked = (topic: TopicFromDB) => {
+    if (!topic.accessLevel) return false;
+
+    // subscriber доступ
+    if (topic.accessLevel === "subscriber") {
+      return roleId !== 2 && roleId !== 3 && roleId !== 4;
     }
-    // Проверка требований к CSS
-    if (req.includes("CSS")) {
-      const cssTopic = allTopics.find((t) => t.category === "css");
-      if (!cssTopic) return true;
-      const prog = progressMap.get(cssTopic.id) ?? 0;
-      return prog < 80;
+
+    // admin доступ
+    if (topic.accessLevel === "admin") {
+      return roleId !== 4;
     }
-    // Проверка "ALL" – все темы завершены на 100%
-    if (req.includes("ALL")) {
-      return Array.from(progressMap.values()).every((prog) => prog < 100);
-    }
+
     return false;
   };
 
@@ -161,7 +153,7 @@ export default function TopicsPage() {
     return topics.map((topic) => {
       const progressValue = getProgress(topic.id);
       const completed = isCompleted(progressValue);
-      const locked = isLocked(topic, topics, progressMap);
+      const locked = isLocked(topic);
       const xpValue = topic.xp ?? computeXp(topic.difficulty, topic.lessons);
       const iconClass = topic.icon ?? DEFAULT_ICONS[topic.category];
       const gradientClass =
@@ -176,7 +168,7 @@ export default function TopicsPage() {
         gradientClass,
       };
     });
-  }, [topics, progressMap, getProgress]); // --- Статистика ---
+  }, [topics, progressMap, getProgress, roleId]);
   const completedTopics = displayTopics.filter((t) => t.completed).length;
   const inProgressTopics = displayTopics.filter(
     (t) => !t.completed && t.progress > 0 && !t.locked,

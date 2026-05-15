@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Role {
+  id          Int    @id @default(autoincrement())
+  name        String @unique // admin, teacher, employer, subscriber, user, banned
+  description String?
+  users       User[]
+}
+
 model User {
   id              String   @id @default(cuid())
   email           String   @unique
@@ -24,22 +31,32 @@ model User {
   achievements    String   @default("[]")
   weeklyActivity  String   @default("[]")
   createdAt       DateTime @default(now())
+  roleId          Int      @default(1)
+  role            Role     @relation(fields: [roleId], references: [id])
+  teacherId       String?  @map("teacherId")
+  teacher         User?    @relation("StudentTeacher", fields: [teacherId], references: [id])
+  students        User[]   @relation("StudentTeacher")
+  inviteCode      String?  @unique
+  banReason       String?
+  subscriptionExpiresAt DateTime?
+
   topicProgress   UserTopicProgress[]
 }
 
 model Topic {
-  id            Int      @id @default(autoincrement())
-  title         String
-  description   String
-  category      String
-  difficulty    String
-  iconKey       String
-  lessons       Int
-  xpPerLesson   Int
-  requirements  String?
-  createdAt     DateTime @default(now())
-  progress      UserTopicProgress[]
-  levels        Level[]
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String
+  category     String
+  difficulty   String
+  iconKey      String
+  lessons      Int
+  xpPerLesson  Int
+  requirements String?
+  accessLevel  String   @default("free") 
+  createdAt    DateTime @default(now())
+  progress     UserTopicProgress[]
+  levels       Level[]
 }
 
 model UserTopicProgress {
@@ -63,6 +80,6 @@ model Level {
   css         String
   hint        String?
   xp          Int
-  validation  String? // JSON‑строка с правилами проверки
+  validation  String? // JSON-строка с правилами проверки
   topic       Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
 }
