@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
-          include: { role: true }, // обязательно включаем роль
+          include: { role: true },
         });
         if (!user) return null;
         const isValid = await bcrypt.compare(
@@ -26,15 +26,23 @@ export const authOptions: NextAuthOptions = {
         );
         if (!isValid) return null;
 
-        console.log("✅ User found:", user.email, "role:", user.role?.name);
+        console.log(
+          "✅ User found:",
+          user.email,
+          "role:",
+          user.role?.name,
+          "xp:",
+          user.xp,
+        );
 
         return {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role?.name, // строка
+          role: user.role?.name,
           banReason: user.banReason ?? undefined,
           roleId: user.roleId,
+          xp: user.xp,
         };
       },
     }),
@@ -45,9 +53,10 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.banReason = user.banReason;
         token.roleId = user.roleId;
+        token.xp = user.xp;
         console.log("✅ JWT token after user:", {
           role: token.role,
-          banReason: token.banReason,
+          xp: token.xp,
         });
       }
       return token;
@@ -57,7 +66,12 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.banReason = token.banReason as string;
         session.user.roleId = token.roleId as number;
-        console.log("✅ Session after update:", { role: session.user.role });
+        session.user.xp = token.xp as number;
+
+        console.log("✅ Session after update:", {
+          role: session.user.role,
+          xp: session.user.xp,
+        });
       }
       return session;
     },

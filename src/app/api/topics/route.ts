@@ -15,6 +15,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
+    include: { teacher: true }, // включаем информацию об учителе
   });
 
   if (!user) {
@@ -22,7 +23,7 @@ export async function GET() {
   }
 
   // Получаем темы вместе с уровнями
-  const topics = await prisma.topic.findMany({
+  let topics = await prisma.topic.findMany({
     select: {
       id: true,
       title: true,
@@ -34,11 +35,27 @@ export async function GET() {
       xpPerLesson: true,
       requirements: true,
       accessLevel: true,
+      teacherId: true, // добавляем teacherId для фильтрации
       levels: {
         orderBy: { order: "asc" },
       },
     },
   });
+
+  // Фильтруем темы для обычных пользователей (не админов и не учителей)
+  // Роли: 1 - user, 2 - subscriber
+  if (user.roleId === 1 || user.roleId === 2) {
+    topics = topics.filter((topic) => {
+      // Если тема создана учителем
+      if (topic.teacherId) {
+        // Показываем только если это учитель текущего ученика
+        return topic.teacherId === user.teacherId;
+      }
+      // Общие темы (без teacherId) показываем всем
+      return true;
+    });
+  }
+
   // Прогресс пользователя по темам
   const progressRows = await prisma.userTopicProgress.findMany({
     where: { userId: user.id },

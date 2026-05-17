@@ -23,6 +23,30 @@ type Message = {
   type: "success" | "error" | "info";
 };
 
+// Типы для правил валидации
+type CSSRule = {
+  selector?: string;
+  property?: string;
+  value?: string;
+  withinMedia?: string;
+  rule?: string;
+  inside?: string;
+};
+
+type HTMLRule = {
+  tag: string;
+  contentRequired?: boolean;
+};
+
+type JSRule = {
+  codePattern: string;
+};
+
+type Validation = {
+  type: "cssContains" | "htmlContains" | "jsContains" | "manual";
+  rules: (CSSRule | HTMLRule | JSRule)[];
+};
+
 export default function LevelUI({
   level,
   prevLevelId,
@@ -43,9 +67,6 @@ export default function LevelUI({
   const previewRef = useRef<HTMLIFrameElement>(null);
   const checkBtnRef = useRef<HTMLButtonElement>(null);
 
-  // =========================
-  // MESSAGE
-  // =========================
   const showMessage = useCallback((text: string, type: Message["type"]) => {
     const id = Date.now();
     setMessages((prev) => [...prev, { id, text, type }]);
@@ -54,9 +75,6 @@ export default function LevelUI({
     }, 5000);
   }, []);
 
-  // =========================
-  // UPDATE PREVIEW
-  // =========================
   const updatePreview = useCallback(() => {
     if (!previewRef.current) return;
     const iframe = previewRef.current;
@@ -101,9 +119,6 @@ export default function LevelUI({
     setCssCode(level.css);
   }, [level]);
 
-  // =========================
-  // ACTIONS
-  // =========================
   const handleReset = () => {
     setHtmlCode(level.html);
     setCssCode(level.css);
@@ -122,9 +137,6 @@ export default function LevelUI({
     }
   };
 
-  // =========================
-  // COMPLETE LEVEL (API)
-  // =========================
   const completeLevel = useCallback(async () => {
     try {
       const res = await fetch("/api/levels/complete", {
@@ -135,7 +147,7 @@ export default function LevelUI({
       const data = await res.json();
       if (data.success) {
         showMessage(`Уровень пройден! +${data.xpAwarded} XP`, "success");
-        return data.completed; // true если тема полностью завершена
+        return data.completed;
       } else {
         showMessage("Ошибка сохранения прогресса", "error");
         return false;
@@ -147,20 +159,17 @@ export default function LevelUI({
     }
   }, [level.id, showMessage]);
 
-  // =========================
-  // VALIDATION
-  // =========================
   const isSolutionCorrect = useCallback(() => {
     if (!level.validation) {
       console.warn("Нет правил проверки для уровня", level.id);
       return false;
     }
     try {
-      const validation = JSON.parse(level.validation);
+      const validation: Validation = JSON.parse(level.validation);
       const type = validation.type;
 
       if (type === "cssContains") {
-        return validation.rules.every((rule: any) => {
+        return validation.rules.every((rule) => {
           const {
             selector,
             property,
@@ -168,7 +177,7 @@ export default function LevelUI({
             withinMedia,
             rule: mediaRule,
             inside,
-          } = rule;
+          } = rule as CSSRule;
           if (selector && property && value && !withinMedia) {
             const regex = new RegExp(
               `${selector}\\s*\\{[^}]*${property}\\s*:\\s*${value}[;\\s]`,
@@ -195,8 +204,8 @@ export default function LevelUI({
       }
 
       if (type === "htmlContains") {
-        return validation.rules.every((rule: any) => {
-          const { tag, contentRequired } = rule;
+        return validation.rules.every((rule) => {
+          const { tag, contentRequired } = rule as HTMLRule;
           if (tag) {
             const tagRegex = new RegExp(`<${tag}[\\s>]`, "i");
             const hasTag = tagRegex.test(htmlCode);
@@ -220,8 +229,8 @@ export default function LevelUI({
           /<script[^>]*>([\s\S]*?)<\/script>/i,
         );
         const jsCode = scriptMatch ? scriptMatch[1] : htmlCode;
-        return validation.rules.every((rule: any) => {
-          const { codePattern } = rule;
+        return validation.rules.every((rule) => {
+          const { codePattern } = rule as JSRule;
           if (codePattern) {
             const regex = new RegExp(codePattern, "i");
             return regex.test(jsCode);
@@ -231,24 +240,20 @@ export default function LevelUI({
       }
 
       if (type === "manual") {
-        return false; // ручная проверка
+        return false;
       }
       return false;
     } catch (e) {
       console.error("Ошибка парсинга validation", e);
       return false;
     }
-  }, [cssCode, htmlCode, level.validation]);
+  }, [cssCode, htmlCode, level.validation, level.id]);
 
-  // =========================
-  // CHECK BUTTON HANDLER
-  // =========================
   const handleCheck = async () => {
     if (isChecking) return;
     setIsChecking(true);
 
     setTimeout(async () => {
-      // Ручная проверка
       if (level.validation && JSON.parse(level.validation).type === "manual") {
         showMessage(
           "Это задание проверяется преподавателем. Отправьте ссылку на GitHub в нужное поле.",
@@ -260,7 +265,7 @@ export default function LevelUI({
 
       const correct = isSolutionCorrect();
       if (correct) {
-        const topicCompleted = await completeLevel();
+        await completeLevel();
         if (nextLevelId !== null) {
           router.push(`/level/${nextLevelId}`);
         } else {
@@ -289,9 +294,6 @@ export default function LevelUI({
     showMessage("Предпросмотр обновлен", "info");
   };
 
-  // =========================
-  // TOPIC INFO
-  // =========================
   const getTopicInfo = () => {
     const topics: Record<
       number,
@@ -329,9 +331,6 @@ export default function LevelUI({
   };
   const topicInfo = getTopicInfo();
 
-  // =========================
-  // MODAL
-  // =========================
   const CompletionModal = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="glass-card rounded-2xl p-8 max-w-md mx-4 text-center border border-accent-purple shadow-2xl animate-slideIn">
@@ -353,15 +352,11 @@ export default function LevelUI({
     </div>
   );
 
-  // =========================
-  // RENDER
-  // =========================
   return (
     <div className="min-h-screen bg-primary-dark text-text-light">
       {showCompletionModal && <CompletionModal />}
 
       <style jsx global>{`
-        /* все ваши стили (ключевые кадры, цвета) – оставьте без изменений */
         @keyframes pulse {
           0% {
             opacity: 1;
@@ -475,7 +470,6 @@ export default function LevelUI({
         }
       `}</style>
 
-      {/* Сообщения */}
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -496,7 +490,6 @@ export default function LevelUI({
       ))}
 
       <div className="container mx-auto px-4 max-w-7xl">
-        {/* Шапка уровня (без изменений) */}
         <div className="my-8 pb-6 border-b border-glass-border">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0">
             <div>
@@ -524,9 +517,7 @@ export default function LevelUI({
           </div>
         </div>
 
-        {/* Основной контент (редактор + превью) – без изменений */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Редактор кода */}
           <div className="bg-secondary-dark rounded-xl overflow-hidden border border-glass-border shadow-lg">
             <div className="p-4 bg-black/50 border-b border-glass-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
               <div className="flex items-center gap-3 font-bold">
@@ -536,13 +527,13 @@ export default function LevelUI({
               <div className="flex gap-3 flex-wrap">
                 <button
                   onClick={handleReset}
-                  className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10 hover:border-accent-blue hover:text-accent-blue transition-all duration-300"
+                  className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10"
                 >
                   <i className="fas fa-redo mr-2"></i>Сбросить
                 </button>
                 <button
                   onClick={handleHint}
-                  className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10 hover:border-accent-blue hover:text-accent-blue transition-all duration-300"
+                  className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10"
                 >
                   <i className="fas fa-lightbulb mr-2"></i>Подсказка
                 </button>
@@ -590,7 +581,6 @@ export default function LevelUI({
             />
           </div>
 
-          {/* Панель предпросмотра */}
           <div className="glass-card rounded-xl p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-glass-border">
               <h3 className="text-xl font-bold text-accent-blue flex items-center gap-3">
@@ -598,7 +588,7 @@ export default function LevelUI({
               </h3>
               <button
                 onClick={handleRefreshPreview}
-                className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10 hover:border-accent-blue hover:text-accent-blue transition-all duration-300"
+                className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10"
               >
                 <i className="fas fa-sync-alt mr-2"></i>Обновить
               </button>
@@ -645,7 +635,6 @@ export default function LevelUI({
           </div>
         </div>
 
-        {/* Навигация */}
         <div className="flex flex-col sm:flex-row justify-between gap-4 my-12 pt-6 border-t border-glass-border">
           {prevLevelId !== null ? (
             <Link

@@ -5,6 +5,7 @@ declare module "next-auth" {
     role?: string;
     banReason?: string;
     roleId?: number;
+    xp?: number;
   }
   interface Session {
     user: {
@@ -13,6 +14,7 @@ declare module "next-auth" {
       role?: string;
       banReason?: string;
       roleId?: number;
+      xp?: number;
     };
   }
 }
@@ -22,5 +24,6 @@ declare module "next-auth/jwt" {
     role?: string;
     banReason?: string;
     roleId?: number;
+    xp?: number;
   }
 }

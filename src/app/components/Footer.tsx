@@ -6,7 +6,6 @@ export default function Footer() {
     { href: "/topics", label: "Темы" },
     { href: "/materials", label: "Материалы" },
     { href: "/profile", label: "Профиль" },
-    { href: "/auth", label: "Войти" },
   ];
 
   return (
@@ -24,7 +23,7 @@ export default function Footer() {
           ))}
         </div>
         <p className="text-text-dim">
-          © {new Date().getFullYear()} WebFlow. Все права защищены.
+          © {new Date().getFullYear()} CodeLingo. Все права защищены.
         </p>
       </div>
     </footer>

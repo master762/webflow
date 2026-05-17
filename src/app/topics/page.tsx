@@ -21,17 +21,14 @@ interface TopicFromDB {
   description: string;
   category: Category;
   difficulty: Difficulty;
-
   icon?: string;
   iconColor?: string;
-
   lessons: number;
-
   levels: Level[];
-
   xp?: number;
   requirements?: string | null;
   accessLevel?: string;
+  teacherId?: string | null;
 }
 
 interface UserProgress {
@@ -438,10 +435,10 @@ export default function TopicsPage() {
             <div
               key={topic.id}
               className={`
-                glass-card rounded-xl p-6 border flex flex-col transition-all duration-300 relative
-                ${topic.locked ? "opacity-70 grayscale" : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-2"}
-                ${topic.completed ? "border-accent-green bg-accent-green/5 shadow-md" : "border-glass-border"}
-              `}
+    glass-card rounded-xl p-6 border flex flex-col transition-all duration-300 relative
+    ${topic.locked ? "opacity-70 grayscale" : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-2"}
+    ${topic.completed ? "border-accent-green bg-accent-green/5 shadow-md" : "border-glass-border"}
+  `}
               style={{ animation: `slideIn 0.5s ease ${index * 0.1}s both` }}
               onClick={
                 topic.locked ? () => handleLockedTopicClick(topic) : undefined
@@ -449,7 +446,7 @@ export default function TopicsPage() {
             >
               {/* Иконка блокировки */}
               {topic.locked && (
-                <i className="fas fa-lock text-accent-red text-xl absolute top-5 right-5"></i>
+                <i className="fas fa-lock text-accent-red text-xl absolute top-5 right-5 z-10"></i>
               )}
 
               {/* Заголовок карточки: иконка + уровень сложности */}
@@ -508,7 +505,15 @@ export default function TopicsPage() {
                   ></div>
                 </div>
               </div>
-
+              {/* Бейдж "Задание от учителя" - внизу карточки */}
+              {topic.teacherId && !topic.locked && (
+                <div className="mb-3">
+                  <span className="px-2 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/50 rounded-md text-xs flex items-center gap-1 w-fit">
+                    <i className="fas fa-chalkboard-user text-xs"></i> Задание
+                    от учителя
+                  </span>
+                </div>
+              )}
               {/* Кнопки действий */}
               <div className="flex gap-3 mt-auto">
                 {topic.locked ? (
@@ -560,7 +565,6 @@ export default function TopicsPage() {
           ))}
         </div>
       </div>
-
       {filteredTopics.length === 0 && (
         <div className="text-center py-12 glass-card rounded-xl border border-glass-border">
           <i className="fas fa-search text-4xl text-text-dim mb-4"></i>

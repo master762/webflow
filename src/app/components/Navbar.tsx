@@ -17,7 +17,6 @@ export default function Navbar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === href : pathname.startsWith(href);
 
-  // Функция для получения инициалов (до 2 букв)
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -26,6 +25,10 @@ export default function Navbar() {
       .slice(0, 2)
       .toUpperCase();
   };
+
+  const isAdmin = session?.user?.role === "admin";
+  const isTeacher = session?.user?.role === "teacher";
+  const userXP = session?.user?.xp || 0;
 
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(10,10,20,0.95)] backdrop-blur-sm border-b border-glass-border py-4 shadow-lg shadow-black/30">
@@ -37,7 +40,7 @@ export default function Navbar() {
             className="flex items-center gap-3 text-2xl font-bold text-text-light no-underline"
           >
             <i className="fas fa-code text-accent-blue shadow-neon-blue"></i>
-            <span className="gradient-text">WebFlow</span>
+            <span className="gradient-text">CodeLingo</span>
           </Link>
 
           {/* Nav links */}
@@ -55,13 +58,43 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {/* Пункт для администратора */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
+                  pathname.startsWith("/admin")
+                    ? "bg-[rgba(168,85,247,0.15)] text-accent-purple shadow-neon-purple"
+                    : "text-text-light hover:bg-[rgba(168,85,247,0.1)] hover:text-accent-purple"
+                }`}
+              >
+                <i className="fas fa-shield-alt mr-2"></i>
+                Админ панель
+              </Link>
+            )}
+            {isTeacher && (
+              <Link
+                href="/teacher"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
+                  pathname.startsWith("/teacher")
+                    ? "bg-[rgba(0,217,255,0.15)] text-accent-blue shadow-neon-blue"
+                    : "text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue"
+                }`}
+              >
+                <i className="fas fa-chalkboard-user mr-2"></i>
+                Мои ученики
+              </Link>
+            )}
           </div>
 
           {/* Right side */}
           <div className="flex items-center gap-4">
-            <div className="bg-[rgba(0,255,157,0.1)] text-accent-green px-3 py-1.5 rounded-full text-sm border border-accent-green shadow-neon-green">
-              XP: 1,245
-            </div>
+            {session && (
+              <div className="bg-[rgba(0,255,157,0.1)] text-accent-green px-3 py-1.5 rounded-full text-sm border border-accent-green shadow-neon-green">
+                <i className="fas fa-star mr-1"></i>
+                XP: {userXP.toLocaleString()}
+              </div>
+            )}
 
             {!session ? (
               <Link

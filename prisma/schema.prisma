@@ -13,7 +13,6 @@ model Role {
   description String?
   users       User[]
 }
-
 model User {
   id              String   @id @default(cuid())
   email           String   @unique
@@ -39,10 +38,9 @@ model User {
   inviteCode      String?  @unique
   banReason       String?
   subscriptionExpiresAt DateTime?
-
+  projectSubmissions ProjectSubmission[]
   topicProgress   UserTopicProgress[]
 }
-
 model Topic {
   id           Int      @id @default(autoincrement())
   title        String
@@ -53,12 +51,36 @@ model Topic {
   lessons      Int
   xpPerLesson  Int
   requirements String?
-  accessLevel  String   @default("free") 
+  accessLevel  String   @default("free")
+  teacherId    String? 
   createdAt    DateTime @default(now())
   progress     UserTopicProgress[]
   levels       Level[]
+  project      Project?
 }
-
+model ProjectSubmission {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repoLink    String   
+  status      String   @default("pending") 
+  score       Int?     
+  comment     String?  
+  xpAwarded   Int?     
+  submittedAt DateTime @default(now())
+  reviewedAt  DateTime?
+}
+model Project {
+  id               Int      @id @default(autoincrement())
+  topicId          Int      @unique
+  topic            Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  technicalSpec    String   
+  materials        String?  
+  createdAt        DateTime @default(now())
+  submissions      ProjectSubmission[]
+}
 model UserTopicProgress {
   id        Int    @id @default(autoincrement())
   userId    String
@@ -69,7 +91,6 @@ model UserTopicProgress {
   topic     Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
   @@unique([userId, topicId])
 }
-
 model Level {
   id          Int    @id @default(autoincrement())
   topicId     Int
@@ -80,6 +101,6 @@ model Level {
   css         String
   hint        String?
   xp          Int
-  validation  String? // JSON-строка с правилами проверки
+  validation  String? 
   topic       Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
 }

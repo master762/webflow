@@ -9,7 +9,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "WebFlow",
+  title: "CodeLingo",
   description: "Изучай HTML/CSS как в игре",
   icons: {
     icon: "/favicon.ico",
@@ -33,6 +33,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {children}
+          <Footer />
           <SessionTracker />
         </Providers>
       </body>
