@@ -92,19 +92,3 @@ NEXTAUTH_URL="http://localhost:3000"
 
 DATABASE_URL="file:./database.db"
 
-src/
-├── app/ # Next.js App Router
-│ ├── admin/ # Панель администратора
-│ ├── api/ # API эндпоинты
-│ ├── auth/ # Страница авторизации
-│ ├── employer/ # Каталог специалистов
-│ ├── level/ # Страница уровня
-│ ├── materials/ # Учебные материалы
-│ ├── profile/ # Профиль пользователя
-│ ├── projects/ # Страница проекта
-│ ├── teacher/ # Панель учителя
-│ └── topics/ # Список тем
-├── components/ # React компоненты
-├── lib/ # Утилиты и конфигурации
-├── prisma/ # Схема и миграции БД
-└── types/ # TypeScript типы
