@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎓 CodeLingo - Образовательная платформа для изучения веб-разработки
 
-## Getting Started
+![Next.js](https://img.shields.io/badge/Next.js-15.0-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-5.0-2D3748?logo=prisma)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC?logo=tailwind-css)
+![SQLite](https://img.shields.io/badge/SQLite-3.0-003B57?logo=sqlite)
 
-First, run the development server:
+## 📖 О проекте
+
+**CodeLingo** — это интерактивная образовательная платформа, где изучение HTML, CSS и JavaScript превращается в увлекательную игру. Пользователи проходят уровни, выполняют практические задания, сражаются с "боссами" и отслеживают свой прогресс.
+
+### 🎯 Ключевые возможности
+
+- **🗂️ Темы и уровни** — структурированное обучение с поэтапным усложнением
+- **💻 Интерактивный редактор кода** — live-превью HTML/CSS прямо на странице
+- **📊 Система прогресса** — XP, уровни, достижения и ежедневные серии
+- **📚 Материалы для изучения** — статьи, видео, шпаргалки и интерактивные руководства
+- **👨‍🏫 Ролевая система** — пользователи, подписчики, учителя, администраторы и работодатели
+- **📝 Проекты с проверкой** — отправка решений на GitHub и проверка преподавателем
+- **🏆 Достижения** — награды за прогресс и выполнение заданий
+- **📈 Аналитика активности** — график активности пользователя
+- **👥 Система наставничества** — привязка учеников к учителям
+
+## 👥 Роли пользователей
+
+| Роль           | Доступ          | Возможности                                                    |
+| -------------- | --------------- | -------------------------------------------------------------- |
+| **user**       | Ограниченный    | Изучение материалов, прохождение уровней                       |
+| **subscriber** | Полный          | + Доступ к проектам, отображение в каталоге специалистов       |
+| **teacher**    | Расширенный     | Создание тем/уровней, управление учениками                     |
+| **admin**      | Полный          | Управление пользователями, темами, уровнями, проверка проектов |
+| **employer**   | Ограниченный    | Просмотр каталога специалистов и их проектов                   |
+| **banned**     | Заблокированный | Только страница с причиной блокировки                          |
+
+## 🛠️ Технологический стек
+
+### Frontend
+
+- **Next.js 15** (App Router, Turbopack)
+- **TypeScript** — типобезопасность
+- **Tailwind CSS** — стилизация и адаптивность
+- **NextAuth.js** — аутентификация
+
+### Backend
+
+- **Next.js API Routes** — REST API
+- **Prisma ORM** — работа с базой данных
+- **SQLite** — легковесная БД (можно заменить на PostgreSQL)
+
+### Инструменты
+
+- **bcrypt** — хеширование паролей
+- **FontAwesome** — иконки
+- **ESLint / Prettier** — качество кода
+
+## 🚀 Установка и запуск
+
+### Требования
+
+- Node.js 18+
+- npm / yarn / pnpm
+
+### Установка
 
 ```bash
+# Клонирование репозитория
+git clone https://github.com/your-username/codelingo.git
+cd codelingo
+
+# Установка зависимостей
+npm install
+
+# Настройка переменных окружения
+cp .env.example .env.local
+
+# Инициализация базы данных
+npx prisma generate
+npx prisma migrate dev
+npx prisma db seed
+
+# Запуск в режиме разработки
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# NextAuth
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+NEXTAUTH_SECRET="any-random-string"
+NEXTAUTH_URL="http://localhost:3000"
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# База данных
 
-## Learn More
+DATABASE_URL="file:./database.db"
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+src/
+├── app/ # Next.js App Router
+│ ├── admin/ # Панель администратора
+│ ├── api/ # API эндпоинты
+│ ├── auth/ # Страница авторизации
+│ ├── employer/ # Каталог специалистов
+│ ├── level/ # Страница уровня
+│ ├── materials/ # Учебные материалы
+│ ├── profile/ # Профиль пользователя
+│ ├── projects/ # Страница проекта
+│ ├── teacher/ # Панель учителя
+│ └── topics/ # Список тем
+├── components/ # React компоненты
+├── lib/ # Утилиты и конфигурации
+├── prisma/ # Схема и миграции БД
+└── types/ # TypeScript типы
