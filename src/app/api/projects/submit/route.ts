@@ -13,12 +13,9 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
   });
-
-  if (!user) {
+  if (!user)
     return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
 
-  // Проверяем, есть ли уже отправка
   const existing = await prisma.projectSubmission.findFirst({
     where: { projectId, userId: user.id },
   });
@@ -28,12 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   const submission = await prisma.projectSubmission.create({
-    data: {
-      projectId,
-      userId: user.id,
-      repoLink,
-      status: "pending",
-    },
+    data: { projectId, userId: user.id, repoLink, status: "pending" },
   });
 
   return NextResponse.json(submission, { status: 201 });

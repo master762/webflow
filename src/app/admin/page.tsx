@@ -409,6 +409,7 @@ export default function AdminPage() {
     if (!session || session.user?.role !== "admin") {
       router.push("/");
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchData();
     }
   }, [session, status, router, fetchData]);
@@ -1136,7 +1137,7 @@ export default function AdminPage() {
                     >
                       <td className="py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white font-bold">
                             {user.name.slice(0, 2).toUpperCase()}
                           </div>
                           <div>

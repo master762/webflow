@@ -15,14 +15,14 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { teacher: true }, // включаем информацию об учителе
+    include: { teacher: true },
   });
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Получаем темы вместе с уровнями
+  // Получаем темы вместе с уровнями и проектами
   let topics = await prisma.topic.findMany({
     select: {
       id: true,
@@ -35,26 +35,43 @@ export async function GET() {
       xpPerLesson: true,
       requirements: true,
       accessLevel: true,
-      teacherId: true, // добавляем teacherId для фильтрации
+      teacherId: true,
       levels: {
         orderBy: { order: "asc" },
+      },
+      project: {
+        select: {
+          id: true,
+          submissions: {
+            where: { userId: user.id },
+            select: {
+              status: true,
+              score: true,
+              comment: true,
+            },
+            take: 1,
+          },
+        },
       },
     },
   });
 
-  // Фильтруем темы для обычных пользователей (не админов и не учителей)
-  // Роли: 1 - user, 2 - subscriber
+  // Фильтруем темы для обычных пользователей
   if (user.roleId === 1 || user.roleId === 2) {
     topics = topics.filter((topic) => {
-      // Если тема создана учителем
       if (topic.teacherId) {
-        // Показываем только если это учитель текущего ученика
         return topic.teacherId === user.teacherId;
       }
-      // Общие темы (без teacherId) показываем всем
       return true;
     });
   }
+
+  // Добавляем projectId и submission к каждой теме
+  const topicsWithData = topics.map((topic) => ({
+    ...topic,
+    projectId: topic.project?.id || null,
+    submission: topic.project?.submissions?.[0] || null,
+  }));
 
   // Прогресс пользователя по темам
   const progressRows = await prisma.userTopicProgress.findMany({
@@ -68,11 +85,10 @@ export async function GET() {
   }));
 
   return NextResponse.json({
-    topics,
+    topics: topicsWithData,
     progress: progressMap,
   });
 }
-
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession();
 
@@ -95,7 +111,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Получаем старую запись прогресса, чтобы понять, была ли тема уже завершена
   const oldProgress = await prisma.userTopicProgress.findUnique({
     where: {
       userId_topicId: {
@@ -108,7 +123,6 @@ export async function PATCH(req: NextRequest) {
   const wasCompleted = oldProgress?.completed === true;
   const isNowCompleted = progress >= 100;
 
-  // Обновляем прогресс темы
   const updated = await prisma.userTopicProgress.upsert({
     where: {
       userId_topicId: {
@@ -128,16 +142,14 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
-  // Если тема только что завершена (была не завершена, а стала завершена)
   if (isNowCompleted && !wasCompleted) {
     await prisma.user.update({
       where: { id: user.id },
       data: {
         topicsCompleted: { increment: 1 },
-        xp: { increment: 50 }, // бонус за тему
+        xp: { increment: 50 },
       },
     });
-    // Обновляем уровень и достижения
     await updateUserLevel(user.id);
     await checkAndUnlockAchievements(user.id);
   }

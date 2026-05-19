@@ -20,9 +20,22 @@ export async function GET() {
   }
 
   const topics = await prisma.topic.findMany({
+    include: {
+      project: {
+        // Включаем связанный проект
+        select: { id: true },
+      },
+    },
     orderBy: { id: "asc" },
   });
-  return NextResponse.json(topics);
+
+  // Добавляем projectId для каждой темы
+  const topicsWithProjectId = topics.map((topic) => ({
+    ...topic,
+    projectId: topic.project?.id || null,
+  }));
+
+  return NextResponse.json(topicsWithProjectId);
 }
 
 // POST - создание новой темы
@@ -53,6 +66,8 @@ export async function POST(req: NextRequest) {
       xpPerLesson,
       requirements,
       accessLevel,
+      technicalSpec,
+      materials,
     } = await req.json();
 
     if (!title || !description || !category || !difficulty || !iconKey) {
@@ -62,6 +77,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Создаём тему
     const newTopic = await prisma.topic.create({
       data: {
         title,
@@ -76,7 +92,29 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(newTopic, { status: 201 });
+    let projectId = null;
+
+    // Если это проект, создаём запись в таблице Project
+    if (category === "projects") {
+      const newProject = await prisma.project.create({
+        data: {
+          topicId: newTopic.id,
+          technicalSpec:
+            technicalSpec ||
+            "<h3>Техническое задание</h3><p>Описание проекта...</p>",
+          materials: materials || null,
+        },
+      });
+      projectId = newProject.id;
+    }
+
+    return NextResponse.json(
+      {
+        ...newTopic,
+        projectId,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Error creating topic:", error);
     return NextResponse.json(
@@ -115,12 +153,15 @@ export async function PUT(req: NextRequest) {
       xpPerLesson,
       requirements,
       accessLevel,
+      technicalSpec,
+      materials,
     } = await req.json();
 
     if (!id) {
       return NextResponse.json({ error: "Topic ID required" }, { status: 400 });
     }
 
+    // Обновляем тему
     const updatedTopic = await prisma.topic.update({
       where: { id },
       data: {
@@ -136,7 +177,41 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(updatedTopic);
+    let projectId = null;
+
+    // Если это проект, обновляем или создаём запись в Project
+    if (category === "projects") {
+      const existingProject = await prisma.project.findUnique({
+        where: { topicId: id },
+      });
+
+      if (existingProject) {
+        const updatedProject = await prisma.project.update({
+          where: { topicId: id },
+          data: {
+            technicalSpec: technicalSpec || existingProject.technicalSpec,
+            materials: materials || existingProject.materials,
+          },
+        });
+        projectId = updatedProject.id;
+      } else {
+        const newProject = await prisma.project.create({
+          data: {
+            topicId: id,
+            technicalSpec:
+              technicalSpec ||
+              "<h3>Техническое задание</h3><p>Описание проекта...</p>",
+            materials: materials || null,
+          },
+        });
+        projectId = newProject.id;
+      }
+    }
+
+    return NextResponse.json({
+      ...updatedTopic,
+      projectId,
+    });
   } catch (error) {
     console.error("Error updating topic:", error);
     return NextResponse.json(
@@ -171,11 +246,35 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Topic ID required" }, { status: 400 });
     }
 
-    // Сначала удаляем связанные уровни
+    // 1. Проверяем, является ли тема проектом
+    const topic = await prisma.topic.findUnique({
+      where: { id },
+      select: { category: true },
+    });
+
+    // 2. Если это проект, удаляем связанные submission'ы и сам проект
+    if (topic?.category === "projects") {
+      const project = await prisma.project.findUnique({
+        where: { topicId: id },
+      });
+
+      if (project) {
+        await prisma.projectSubmission.deleteMany({
+          where: { projectId: project.id },
+        });
+        await prisma.project.delete({
+          where: { topicId: id },
+        });
+      }
+    }
+
+    // 3. Удаляем связанные уровни
     await prisma.level.deleteMany({ where: { topicId: id } });
-    // Удаляем прогресс пользователей
+
+    // 4. Удаляем прогресс пользователей
     await prisma.userTopicProgress.deleteMany({ where: { topicId: id } });
-    // Удаляем тему
+
+    // 5. Удаляем тему
     await prisma.topic.delete({ where: { id } });
 
     return NextResponse.json({ success: true });

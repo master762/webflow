@@ -8,12 +8,6 @@ export default function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  const navLinks = [
-    { href: "/", label: "Главная" },
-    { href: "/topics", label: "Темы" },
-    { href: "/materials", label: "Материалы" },
-  ];
-
   const isActive = (href: string) =>
     href === "/" ? pathname === href : pathname.startsWith(href);
 
@@ -28,7 +22,12 @@ export default function Navbar() {
 
   const isAdmin = session?.user?.role === "admin";
   const isTeacher = session?.user?.role === "teacher";
+  const isEmployer = session?.user?.role === "employer";
+
   const userXP = session?.user?.xp || 0;
+
+  // Для работодателя скрываем основные ссылки
+  const showMainLinks = !isEmployer;
 
   return (
     <nav className="sticky top-0 z-50 bg-[rgba(10,10,20,0.95)] backdrop-blur-sm border-b border-glass-border py-4 shadow-lg shadow-black/30">
@@ -45,19 +44,57 @@ export default function Navbar() {
 
           {/* Nav links */}
           <div className="flex flex-wrap justify-center gap-4 md:gap-6 items-center">
-            {navLinks.map((link) => (
+            {/* Основные ссылки - скрываем для работодателя */}
+            {showMainLinks && (
+              <>
+                <Link
+                  href="/"
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
+                    isActive("/")
+                      ? "bg-[rgba(0,217,255,0.15)] text-accent-blue shadow-neon-blue"
+                      : "text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue"
+                  }`}
+                >
+                  Главная
+                </Link>
+                <Link
+                  href="/topics"
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
+                    isActive("/topics")
+                      ? "bg-[rgba(0,217,255,0.15)] text-accent-blue shadow-neon-blue"
+                      : "text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue"
+                  }`}
+                >
+                  Темы
+                </Link>
+                <Link
+                  href="/materials"
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
+                    isActive("/materials")
+                      ? "bg-[rgba(0,217,255,0.15)] text-accent-blue shadow-neon-blue"
+                      : "text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue"
+                  }`}
+                >
+                  Материалы
+                </Link>
+              </>
+            )}
+
+            {/* Пункт для работодателя */}
+            {isEmployer && (
               <Link
-                key={link.href}
-                href={link.href}
+                href="/employer"
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 no-underline ${
-                  isActive(link.href)
+                  pathname.startsWith("/employer")
                     ? "bg-[rgba(0,217,255,0.15)] text-accent-blue shadow-neon-blue"
                     : "text-text-light hover:bg-[rgba(0,217,255,0.1)] hover:text-accent-blue"
                 }`}
               >
-                {link.label}
+                <i className="fas fa-briefcase mr-2"></i>
+                Каталог специалистов
               </Link>
-            ))}
+            )}
+
             {/* Пункт для администратора */}
             {isAdmin && (
               <Link
@@ -72,6 +109,8 @@ export default function Navbar() {
                 Админ панель
               </Link>
             )}
+
+            {/* Пункт для учителя */}
             {isTeacher && (
               <Link
                 href="/teacher"
@@ -105,7 +144,7 @@ export default function Navbar() {
               </Link>
             ) : (
               <Link href="/profile" className="relative group">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-sm font-bold border border-accent-blue shadow-lg shadow-accent-blue/30 transition-all duration-300 hover:scale-105">
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-sm font-bold border border-accent-blue shadow-lg shadow-accent-blue/30 transition-all duration-300 hover:scale-105">
                   {getInitials(session.user?.name || "Пользователь")}
                 </div>
               </Link>

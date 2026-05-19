@@ -11,21 +11,26 @@ interface Project {
   technicalSpec: string;
   materials: string | null;
   topic: {
+    id: number;
     title: string;
     description: string;
     xpPerLesson: number;
   };
-  submissions?: {
+  submission?: {
     id: number;
     repoLink: string;
     status: string;
     score: number | null;
     comment: string | null;
     xpAwarded: number | null;
-  }[];
+  };
 }
 
-export default function ProjectPage({ params }: { params: { id: string } }) {
+export default function ProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
@@ -36,14 +41,6 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     { id: number; text: string; type: string }[]
   >([]);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth");
-      return;
-    }
-    fetchProject();
-  }, [params.id, status]);
-
   const showMessage = (text: string, type: string) => {
     const id = Date.now();
     setMessages((prev) => [...prev, { id, text, type }]);
@@ -53,11 +50,13 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     );
   };
 
-  const fetchProject = async () => {
+  const fetchProject = async (id: string) => {
     try {
-      const res = await fetch(`/api/projects/${params.id}`);
+      const res = await fetch(`/api/projects/${id}`);
       if (res.ok) {
         setProject(await res.json());
+      } else {
+        showMessage("Проект не найден", "error");
       }
     } catch (error) {
       console.error(error);
@@ -66,41 +65,59 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     }
   };
 
+  useEffect(() => {
+    const load = async () => {
+      if (status === "loading") return;
+      if (!session) {
+        router.push("/auth");
+        return;
+      }
+      const { id } = await params;
+      fetchProject(id);
+    };
+    load();
+  }, [params, session, status, router]);
+
   const handleSubmit = async () => {
     if (!repoLink.trim()) {
       showMessage("Введите ссылку на GitHub", "error");
       return;
     }
 
+    const { id } = await params;
     setSubmitting(true);
     try {
       const res = await fetch("/api/projects/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: parseInt(params.id), repoLink }),
+        body: JSON.stringify({ projectId: parseInt(id), repoLink }),
       });
 
       if (res.ok) {
         showMessage("Работа отправлена на проверку!", "success");
-        fetchProject();
+        fetchProject(id);
         setRepoLink("");
       } else {
         const error = await res.json();
         showMessage(error.error || "Ошибка", "error");
       }
-    } catch (error) {
+    } catch {
       showMessage("Ошибка", "error");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-screen bg-primary-dark text-text-light flex items-center justify-center">
         <i className="fas fa-spinner fa-spin text-4xl text-accent-blue"></i>
       </div>
     );
+  }
+
+  if (!session) {
+    return null;
   }
 
   if (!project) {
@@ -116,10 +133,10 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const existingSubmission = project.submissions?.[0];
-  const isPending = existingSubmission?.status === "pending";
-  const isReviewed = existingSubmission?.status === "reviewed";
-  const score = existingSubmission?.score;
+  const submission = project.submission;
+  const isPending = submission?.status === "pending";
+  const isReviewed = submission?.status === "reviewed";
+  const score = submission?.score;
   const scoreColor =
     score && score >= 8 ? "green" : score && score >= 5 ? "yellow" : "red";
   const scoreClass =
@@ -145,32 +162,35 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           </div>
         ))}
 
-        {/* Заголовок */}
-        <div className="mb-8">
-          <Link
-            href="/topics"
-            className="text-accent-blue hover:underline mb-4 inline-block"
-          >
-            ← Назад к темам
-          </Link>
-          <h1 className="text-3xl md:text-4xl font-bold gradient-text mt-4">
-            {project.topic.title}
-          </h1>
-          <p className="text-text-dim mt-2">{project.topic.description}</p>
-        </div>
+        <Link
+          href="/topics"
+          className="text-accent-blue hover:underline mb-4 inline-block"
+        >
+          ← Назад к темам
+        </Link>
+        <h1 className="text-3xl md:text-4xl font-bold gradient-text mt-4">
+          {project.topic.title}
+        </h1>
+        <p className="text-text-dim mt-2 mb-6">{project.topic.description}</p>
 
-        {/* Статус задачи */}
+        {/* Статус проверки */}
         {isReviewed && (
-          <div className={`mb-6 p-6 rounded-xl border ${scoreClass}`}>
+          <div className={`mt-6 p-6 rounded-xl border ${scoreClass}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <i
-                  className={`fas fa-${score && score >= 8 ? "crown" : score && score >= 5 ? "thumbs-up" : "frown"} text-2xl`}
+                  className={`fas fa-${
+                    score && score >= 8
+                      ? "crown"
+                      : score && score >= 5
+                        ? "thumbs-up"
+                        : "frown"
+                  } text-2xl`}
                 ></i>
                 <div>
                   <h3 className="font-bold text-lg">Работа оценена</h3>
                   <p className="text-sm opacity-80">
-                    Получено {existingSubmission?.xpAwarded} XP
+                    Получено {submission?.xpAwarded} XP
                   </p>
                 </div>
               </div>
@@ -179,16 +199,16 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                 <div className="text-sm opacity-80">Оценка</div>
               </div>
             </div>
-            {existingSubmission?.comment && (
+            {submission?.comment && (
               <div className="mt-4 p-4 bg-black/30 rounded-lg">
-                <p className="text-sm">{existingSubmission.comment}</p>
+                <p className="text-sm">{submission.comment}</p>
               </div>
             )}
           </div>
         )}
 
         {isPending && (
-          <div className="mb-6 p-6 rounded-xl border border-yellow-500 bg-yellow-500/10 text-yellow-400">
+          <div className="mt-6 p-6 rounded-xl border border-yellow-500 bg-yellow-500/10 text-yellow-400">
             <div className="flex items-center gap-3">
               <i className="fas fa-hourglass-half text-2xl"></i>
               <div>
@@ -201,8 +221,8 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           </div>
         )}
 
-        {/* ТЗ */}
-        <div className="glass-card rounded-xl p-6 border border-glass-border mb-6">
+        {/* Техническое задание */}
+        <div className="glass-card rounded-xl p-6 border border-glass-border mt-6">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <i className="fas fa-file-alt text-accent-blue"></i> Техническое
             задание
@@ -215,7 +235,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
 
         {/* Материалы */}
         {project.materials && (
-          <div className="glass-card rounded-xl p-6 border border-glass-border mb-6">
+          <div className="glass-card rounded-xl p-6 border border-glass-border mt-6">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <i className="fas fa-books text-accent-green"></i> Материалы
             </h2>
@@ -226,9 +246,9 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
           </div>
         )}
 
-        {/* Форма отправки */}
+        {/* Форма отправки решения */}
         {!isReviewed && !isPending && (
-          <div className="glass-card rounded-xl p-6 border border-glass-border">
+          <div className="glass-card rounded-xl p-6 border border-glass-border mt-6">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <i className="fab fa-github text-accent-purple"></i> Отправить
               решение

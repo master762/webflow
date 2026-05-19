@@ -216,7 +216,7 @@ export default function Home() {
                       {/* Иконка и тэг сложности */}
                       <div className="flex justify-between items-start mb-4">
                         <div
-                          className={`w-14 h-14 rounded-xl flex items-center justify-center text-white text-2xl bg-gradient-to-br ${getGradientClass(topic.category)}`}
+                          className={`w-14 h-14 rounded-xl flex items-center justify-center text-white text-2xl bg-linear-to-br ${getGradientClass(topic.category)}`}
                         >
                           <i className={topic.iconKey}></i>
                         </div>
@@ -298,7 +298,7 @@ export default function Home() {
                 {unlockedAchievements.map((achievement) => (
                   <div
                     key={achievement.id}
-                    className="p-4 rounded-xl border text-center transition-all duration-300 hover:border-accent-yellow bg-gradient-to-br from-accent-blue/10 to-accent-purple/10"
+                    className="p-4 rounded-xl border text-center transition-all duration-300 hover:border-accent-yellow bg-linear-to-br from-accent-blue/10 to-accent-purple/10"
                   >
                     <div className="w-16 h-16 mx-auto rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-2xl mb-3">
                       <i className={`fas ${achievement.icon}`} />

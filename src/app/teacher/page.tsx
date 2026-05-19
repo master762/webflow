@@ -321,7 +321,7 @@ export default function TeacherPage() {
                         className="border-b border-glass-border/50 hover:bg-white/5"
                       >
                         <td className="py-4 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white font-bold">
                             {student.name.slice(0, 2).toUpperCase()}
                           </div>
                           <span className="font-semibold">{student.name}</span>
