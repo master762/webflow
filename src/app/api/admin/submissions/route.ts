@@ -48,7 +48,6 @@ export async function PATCH(req: NextRequest) {
 
   const { submissionId, score, comment } = await req.json();
 
-  // XP за балл (например, 10 XP за 1 балл)
   const XP_PER_POINT = 10;
   const xpAwarded = score * XP_PER_POINT;
 
@@ -63,7 +62,6 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
-  // Начисляем XP пользователю
   await prisma.user.update({
     where: { id: submission.userId },
     data: {

@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Topic ID required" }, { status: 400 });
   }
 
-  // Проверяем, что тема принадлежит учителю
   const topic = await prisma.topic.findFirst({
     where: { id: topicId, teacherId: teacher.id },
   });
@@ -69,7 +68,6 @@ export async function POST(req: NextRequest) {
       validation,
     } = await req.json();
 
-    // Проверяем, что тема принадлежит учителю
     const topic = await prisma.topic.findFirst({
       where: { id: topicId, teacherId: teacher.id },
     });
@@ -101,7 +99,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Обновляем количество уроков в теме
     const levelCount = await prisma.level.count({ where: { topicId } });
     await prisma.topic.update({
       where: { id: topicId },
@@ -151,7 +148,6 @@ export async function DELETE(req: NextRequest) {
 
   await prisma.level.delete({ where: { id: levelId } });
 
-  // Обновляем количество уроков в теме
   const levelCount = await prisma.level.count({
     where: { topicId: level.topicId },
   });

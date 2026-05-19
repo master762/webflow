@@ -22,7 +22,6 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Получаем темы вместе с уровнями и проектами
   let topics = await prisma.topic.findMany({
     select: {
       id: true,
@@ -56,7 +55,6 @@ export async function GET() {
     },
   });
 
-  // Фильтруем темы для обычных пользователей
   if (user.roleId === 1 || user.roleId === 2) {
     topics = topics.filter((topic) => {
       if (topic.teacherId) {
@@ -66,14 +64,12 @@ export async function GET() {
     });
   }
 
-  // Добавляем projectId и submission к каждой теме
   const topicsWithData = topics.map((topic) => ({
     ...topic,
     projectId: topic.project?.id || null,
     submission: topic.project?.submissions?.[0] || null,
   }));
 
-  // Прогресс пользователя по темам
   const progressRows = await prisma.userTopicProgress.findMany({
     where: { userId: user.id },
   });

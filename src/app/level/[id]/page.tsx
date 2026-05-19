@@ -40,18 +40,14 @@ export default function LevelPage() {
         return;
       }
 
-      // 2. Загружаем ВСЕ уровни (эндпоинт /api/levels)
       const resAll = await fetch(`/api/levels`);
       const allLevels: Level[] = await resAll.json();
 
-      // 3. Фильтруем по topicId текущего уровня
       const levelsInTopic = allLevels.filter(
         (l) => l.topicId === levelData.topicId,
       );
-      // Сортируем по order
       levelsInTopic.sort((a, b) => a.order - b.order);
 
-      // 4. Находим предыдущий и следующий уровень
       const currentIndex = levelsInTopic.findIndex(
         (l) => l.id === levelData.id,
       );

@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 export async function GET() {
   const session = await getServerSession();
 
-  // Проверяем роль через базу данных, а не через сессию
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

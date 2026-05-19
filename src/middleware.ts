@@ -32,7 +32,6 @@ export async function middleware(req: NextRequest) {
     "/projects",
   ];
 
-  // Разрешённые пути для всех авторизованных (кроме забаненных)
   const publicPaths = ["/", "/auth", "/api/auth", "/_next", "/favicon.ico"];
 
   console.log("MIDDLEWARE PATH:", pathname);
@@ -47,9 +46,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // Проверка для работодателя
   if (isEmployer) {
-    // Если работодатель пытается зайти на запрещённую страницу
     if (
       employerBlockedPaths.some((blockedPath) =>
         pathname.startsWith(blockedPath),
@@ -57,7 +54,6 @@ export async function middleware(req: NextRequest) {
     ) {
       return NextResponse.redirect(new URL("/employer", req.url));
     }
-    // Если работодатель пытается зайти на страницу, не входящую в разрешённые (кроме публичных)
     const isAllowed = employerAllowedPaths.some(
       (allowedPath) =>
         pathname === allowedPath || pathname.startsWith(allowedPath),

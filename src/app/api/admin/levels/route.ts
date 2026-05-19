@@ -56,7 +56,6 @@ export async function POST(req: NextRequest) {
       validation,
     } = await req.json();
 
-    // Проверяем обязательные поля
     if (!topicId || !title || !description || !html || !css || !xp) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -64,7 +63,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Проверяем существование темы
     const topic = await prisma.topic.findUnique({
       where: { id: topicId },
     });
@@ -73,7 +71,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Topic not found" }, { status: 404 });
     }
 
-    // Если order не указан, ставим следующий по порядку
     let levelOrder = order;
     if (!levelOrder) {
       const lastLevel = await prisma.level.findFirst({
@@ -97,7 +94,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Обновляем количество уроков в теме
     const levelCount = await prisma.level.count({
       where: { topicId },
     });
@@ -211,7 +207,6 @@ export async function DELETE(req: NextRequest) {
 
     await prisma.level.delete({ where: { id } });
 
-    // Обновляем количество уроков в теме
     const levelCount = await prisma.level.count({
       where: { topicId: level.topicId },
     });

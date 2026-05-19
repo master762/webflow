@@ -1,9 +1,22 @@
+/**
+ * Административная панель управления платформой.
+ *
+ * Доступна только пользователям с ролью "admin".
+ *
+ * Основные разделы:
+ * - Пользователи: просмотр, блокировка, смена ролей
+ * - Уровни: создание, редактирование, удаление учебных уровней
+ * - Темы: создание, редактирование, удаление тем (HTML, CSS, Flexbox и др.)
+ * - Статистика: общая информация о платформе
+ * - Проверка: оценка проектов, присланных учениками
+ */
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+// Тип пользователя из БД
 interface User {
   id: string;
   email: string;
@@ -19,6 +32,7 @@ interface User {
   createdAt: string;
 }
 
+// Тип темы обучения
 interface Topic {
   id: number;
   title: string;
@@ -34,6 +48,7 @@ interface Topic {
   materials?: string;
 }
 
+// Тип уровня (урока) внутри темы
 interface Level {
   id: number;
   topicId: number;
@@ -48,6 +63,7 @@ interface Level {
   topic?: Topic;
 }
 
+// Тип отправленного на проверку проекта
 interface Submission {
   id: number;
   projectId: number;
@@ -66,16 +82,26 @@ type TabType = "users" | "levels" | "topics" | "stats" | "reviews";
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Состояние активной вкладки
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [loading, setLoading] = useState(true);
+
+  // Данные из API
   const [users, setUsers] = useState<User[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
+
+  // Фильтры для пользователей
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+
+  // Система уведомлений (тосты)
   const [messages, setMessages] = useState<
     Array<{ id: number; text: string; type: "success" | "error" | "info" }>
   >([]);
+
+  // ==================== МОДАЛЬНОЕ ОКНО ТЕМ ====================
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [topicForm, setTopicForm] = useState({
@@ -91,8 +117,12 @@ export default function AdminPage() {
     technicalSpec: "",
     materials: "",
   });
+
+  // ==================== ПРОВЕРКА ПРОЕКТОВ ====================
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+
+  // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
   const [showLevelModal, setShowLevelModal] = useState(false);
   const [editingLevel, setEditingLevel] = useState<Level | null>(null);
   const [levelForm, setLevelForm] = useState({

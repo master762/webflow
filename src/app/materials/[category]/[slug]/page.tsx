@@ -97,7 +97,6 @@ export default function MaterialDetailPage() {
     }
   }, []);
 
-  // Используем useLayoutEffect для установки clientReady и инициализации практики
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setClientReady(true);

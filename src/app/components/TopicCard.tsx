@@ -28,7 +28,6 @@ interface TopicCardProps {
 }
 
 export default function TopicCard({ topic }: TopicCardProps) {
-  // Определяем статус для проектов
   const isProject = topic.category === "projects";
   const isPending = topic.submissionStatus === "pending";
   const isReviewed = topic.submissionStatus === "reviewed";
@@ -118,7 +117,6 @@ export default function TopicCard({ topic }: TopicCardProps) {
     return null;
   };
 
-  // Для обычных тем показываем прогресс
   const showProgress = !isProject;
 
   return (
@@ -181,7 +179,6 @@ export default function TopicCard({ topic }: TopicCardProps) {
       {/* Статус бейдж для проектов */}
       {getStatusBadge()}
 
-      {/* Прогресс-бар для обычных тем */}
       {showProgress && (
         <div className="mb-6">
           <div className="flex justify-between text-sm mb-2">

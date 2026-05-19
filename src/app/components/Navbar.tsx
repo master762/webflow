@@ -23,10 +23,7 @@ export default function Navbar() {
   const isAdmin = session?.user?.role === "admin";
   const isTeacher = session?.user?.role === "teacher";
   const isEmployer = session?.user?.role === "employer";
-
   const userXP = session?.user?.xp || 0;
-
-  // Для работодателя скрываем основные ссылки
   const showMainLinks = !isEmployer;
 
   return (
@@ -44,7 +41,6 @@ export default function Navbar() {
 
           {/* Nav links */}
           <div className="flex flex-wrap justify-center gap-4 md:gap-6 items-center">
-            {/* Основные ссылки - скрываем для работодателя */}
             {showMainLinks && (
               <>
                 <Link

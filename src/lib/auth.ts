@@ -26,15 +26,6 @@ export const authOptions: NextAuthOptions = {
         );
         if (!isValid) return null;
 
-        console.log(
-          "✅ User found:",
-          user.email,
-          "role:",
-          user.role?.name,
-          "xp:",
-          user.xp,
-        );
-
         return {
           id: user.id,
           email: user.email,

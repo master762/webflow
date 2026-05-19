@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Проверяем, существует ли пользователь
     const existingUser = await prisma.user.findUnique({
       where: { email: session.user.email },
     });
@@ -23,7 +22,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "User already exists" });
     }
 
-    // Создаем нового пользователя с данными по умолчанию
     const defaultTopicsProgress = JSON.stringify([
       { title: "Основы HTML", percent: 0 },
       { title: "Основы CSS", percent: 0 },
@@ -105,7 +103,7 @@ export async function POST(req: NextRequest) {
       data: {
         email: session.user.email,
         name: session.user.name || "Новый пользователь",
-        password: await bcrypt.hash(Math.random().toString(36), 10), // Временный пароль
+        password: await bcrypt.hash(Math.random().toString(36), 10),
         topicsProgress: defaultTopicsProgress,
         achievements: defaultAchievements,
         weeklyActivity: defaultWeeklyActivity,

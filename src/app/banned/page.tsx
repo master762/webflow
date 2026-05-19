@@ -38,7 +38,7 @@ export default async function BannedPage() {
         textAlign: "center",
       }}
     >
-      <h1 style={{ fontSize: 32 }}>🚫 Аккаунт заблокирован</h1>
+      <h1 style={{ fontSize: 32 }}>Аккаунт заблокирован</h1>
 
       <p style={{ marginTop: 10, opacity: 0.8 }}>Причина:</p>
 

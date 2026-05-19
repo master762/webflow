@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/db";
 
@@ -18,10 +18,9 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Получаем всех пользователей с ролями user и subscriber
   const users = await prisma.user.findMany({
     where: {
-      roleId: { in: [1, 2] }, // user и subscriber
+      roleId: { in: [1, 2] },
     },
     include: {
       role: true,
@@ -39,12 +38,11 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Форматируем данные для каждого пользователя
   const formattedUsers = users.map((user) => {
-    const totalLessons = 0; // нужно будет добавить логику подсчёта
-    const completedLessons = 0; // нужно будет добавить логику подсчёта
+    const totalLessons = 0;
+    const completedLessons = 0;
     const progressPercent =
-      user.topicsCompleted > 0 ? (user.topicsCompleted / 8) * 100 : 0; // 8 - всего тем
+      user.topicsCompleted > 0 ? (user.topicsCompleted / 8) * 100 : 0;
 
     const projects = user.projectSubmissions
       .filter((sub) => sub.status === "reviewed")

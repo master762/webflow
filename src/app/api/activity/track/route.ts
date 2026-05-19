@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
     weekly.push({ day: today, value: minutes });
   }
 
-  // Оставляем только последние 7 записей
   weekly = weekly.slice(-7);
 
   await prisma.user.update({

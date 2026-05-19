@@ -17,6 +17,11 @@ interface Achievement {
   unlocked: boolean;
 }
 
+interface WeeklyActivity {
+  day: string;
+  value: number;
+}
+
 interface UserData {
   id: string;
   email: string;
@@ -31,7 +36,7 @@ interface UserData {
   topicsCompleted: number;
   topicsProgress: TopicProgress[];
   achievements: Achievement[];
-  weeklyActivity: { day: string; value: number }[];
+  weeklyActivity: WeeklyActivity[];
   createdAt: string;
 }
 
@@ -45,44 +50,7 @@ export default function ProfilePage() {
   >([]);
   const [messageIdCounter, setMessageIdCounter] = useState(0);
 
-  // Загрузка данных пользователя
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-    if (session?.user?.email) {
-      fetchUserData();
-    }
-  }, [session, status, router]);
-
-  const fetchUserData = async () => {
-    try {
-      const response = await fetch("/api/user/profile");
-      if (!response.ok) throw new Error("Failed to fetch user data");
-
-      const data = await response.json();
-
-      const parsedData: UserData = {
-        ...data,
-        topicsProgress: JSON.parse(data.topicsProgress || "[]"),
-        achievements: JSON.parse(data.achievements || "[]"),
-        weeklyActivity: JSON.parse(data.weeklyActivity || "[]").map(
-          (item: any) => ({
-            day: item.day,
-            value: Number(item.value),
-          }),
-        ),
-      };
-      setUserData(parsedData);
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      showMessage("Ошибка загрузки данных профиля", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Функция показа сообщений (должна быть объявлена первой)
   const showMessage = useCallback(
     (text: string, type: "success" | "error" | "info") => {
       const id = messageIdCounter + 1;
@@ -95,6 +63,45 @@ export default function ProfilePage() {
     [messageIdCounter],
   );
 
+  // Функция загрузки данных (объявляем после showMessage)
+  const fetchUserData = useCallback(async () => {
+    try {
+      const response = await fetch("/api/user/profile");
+      if (!response.ok) throw new Error("Failed to fetch user data");
+
+      const data = await response.json();
+
+      const parsedData: UserData = {
+        ...data,
+        topicsProgress: JSON.parse(data.topicsProgress || "[]"),
+        achievements: JSON.parse(data.achievements || "[]"),
+        weeklyActivity: JSON.parse(data.weeklyActivity || "[]").map(
+          (item: { day: string; value: number }) => ({
+            day: item.day,
+            value: Number(item.value),
+          }),
+        ),
+      };
+      setUserData(parsedData);
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      showMessage("Ошибка загрузки данных профиля", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [showMessage]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+    if (session?.user?.email) {
+      fetchUserData();
+    }
+  }, [session, status, router, fetchUserData]);
+
+  // Остальные обработчики
   const handleEditProfile = useCallback(async () => {
     const newName = prompt("Введите новое имя:", userData?.name);
     if (newName && newName.trim() !== "") {
@@ -126,9 +133,7 @@ export default function ProfilePage() {
           url: profileUrl,
         });
         showMessage("Профиль успешно отправлен!", "success");
-      } catch {
-        // пользователь отменил – ничего не делаем
-      }
+      } catch {}
     } else {
       try {
         await navigator.clipboard.writeText(profileUrl);
@@ -188,7 +193,6 @@ export default function ProfilePage() {
     [showMessage],
   );
 
-  // Анимация прогресс‑баров
   useEffect(() => {
     if (!loading && userData) {
       const progressBars = document.querySelectorAll(".progress-animate");

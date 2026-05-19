@@ -44,7 +44,6 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
-  // 🔥 синхронизация пользователя
   if (progress >= 100) {
     await prisma.user.update({
       where: { id: user.id },

@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // 1. Получаем уровень с темой
   const level = await prisma.level.findUnique({
     where: { id: levelId },
     include: { topic: true },
@@ -36,7 +35,6 @@ export async function POST(req: NextRequest) {
   const topic = level.topic;
   const totalLessons = topic.lessons;
 
-  // 2. Получаем текущий прогресс пользователя по этой теме
   const progressRecord = await prisma.userTopicProgress.findUnique({
     where: {
       userId_topicId: {
@@ -60,7 +58,6 @@ export async function POST(req: NextRequest) {
   );
   const completed = newProgress >= 100;
 
-  // Обновляем прогресс темы
   await prisma.userTopicProgress.upsert({
     where: {
       userId_topicId: {
@@ -91,7 +88,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Если тема завершена только что, начисляем бонус и увеличиваем счётчик тем
   if (completed && (!progressRecord || !progressRecord.completed)) {
     await prisma.user.update({
       where: { id: user.id },
@@ -102,7 +98,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Обновляем уровень и достижения
   await updateUserLevel(user.id);
   await checkAndUnlockAchievements(user.id);
 
