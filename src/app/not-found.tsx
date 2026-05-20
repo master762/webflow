@@ -13,7 +13,8 @@ interface PopularPage {
 
 export default function NotFoundPage() {
   const router = useRouter();
-  const [currentTime, setCurrentTime] = useState("Загрузка...");
+  const [currentTime, setCurrentTime] = useState<string>("");
+  const [currentPath, setCurrentPath] = useState<string>("");
   const [messages, setMessages] = useState<
     Array<{ id: number; text: string; type: "success" | "error" | "info" }>
   >([]);
@@ -21,8 +22,8 @@ export default function NotFoundPage() {
   const [typedText, setTypedText] = useState("");
   const [glitchActive, setGlitchActive] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Популярные страницы
   const popularPages: PopularPage[] = [
     {
       title: "Главная",
@@ -50,11 +51,16 @@ export default function NotFoundPage() {
     },
   ];
 
-  // Исходный текст для эффекта печатания
   const descriptionText =
     "Запрашиваемая вами страница не существует или была перемещена. Возможно, вы ввели неправильный адрес или страница была удалена.";
 
-  // Показать сообщение
+  // Устанавливаем isMounted после монтирования
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+    setCurrentPath(window.location.pathname);
+  }, []);
+
   const showMessage = useCallback(
     (text: string, type: "success" | "error" | "info") => {
       const id = messageIdCounter + 1;
@@ -68,7 +74,6 @@ export default function NotFoundPage() {
     [messageIdCounter],
   );
 
-  // Обработчик кнопки "Назад"
   const handleGoBack = useCallback(() => {
     if (window.history.length > 1) {
       router.back();
@@ -77,7 +82,6 @@ export default function NotFoundPage() {
     }
   }, [router]);
 
-  // Обработчик кнопки копирования ошибки
   const handleCopyError = useCallback(() => {
     const errorText = `404 Error - Page not found\nPath: ${window.location.pathname}\nTime: ${new Date().toLocaleString()}\nUser Agent: ${navigator.userAgent}`;
 
@@ -91,7 +95,6 @@ export default function NotFoundPage() {
       });
   }, [showMessage]);
 
-  // Обработчик кнопки сообщения об ошибке
   const handleReportError = useCallback(() => {
     const email = "support@codeduolingo.com";
     const subject = "404 Error Report";
@@ -101,8 +104,9 @@ export default function NotFoundPage() {
     window.location.href = mailtoLink;
   }, []);
 
-  // Эффект печатания текста
+  // Эффект печатания текста (только после монтирования)
   useEffect(() => {
+    if (!isMounted) return;
     let i = 0;
     const timer = setInterval(() => {
       if (i < descriptionText.length) {
@@ -114,19 +118,19 @@ export default function NotFoundPage() {
     }, 20);
 
     return () => clearInterval(timer);
-  }, [descriptionText]);
+  }, [isMounted, descriptionText]);
 
-  // Эффект мигания курсора
   useEffect(() => {
+    if (!isMounted) return;
     const interval = setInterval(() => {
       setCursorVisible((prev) => !prev);
     }, 500);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isMounted]);
 
-  // Обновление времени
   useEffect(() => {
+    if (!isMounted) return;
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString("ru-RU"));
@@ -135,10 +139,11 @@ export default function NotFoundPage() {
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isMounted]);
 
   // Эффект глитча
   useEffect(() => {
+    if (!isMounted) return;
     const glitchInterval = setInterval(() => {
       if (Math.random() > 0.7) {
         setGlitchActive(true);
@@ -147,10 +152,10 @@ export default function NotFoundPage() {
     }, 3000);
 
     return () => clearInterval(glitchInterval);
-  }, []);
+  }, [isMounted]);
 
-  // Показать приветственное сообщение
   useEffect(() => {
+    if (!isMounted) return;
     const timer = setTimeout(() => {
       showMessage(
         "Страница не найдена. Используйте навигацию для перехода на доступные страницы.",
@@ -159,7 +164,19 @@ export default function NotFoundPage() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [showMessage]);
+  }, [showMessage, isMounted]);
+
+  // Не рендерим динамические данные до монтирования
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-primary-dark text-text-light flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-9xl font-black text-accent-red">404</div>
+          <h1 className="text-3xl font-bold mt-4">Страница не найдена</h1>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-primary-dark text-text-light flex flex-col">
@@ -224,7 +241,6 @@ export default function NotFoundPage() {
         }
       `}</style>
 
-      {/* Сообщения */}
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -242,7 +258,6 @@ export default function NotFoundPage() {
       ))}
 
       <div className="flex-1 relative overflow-hidden">
-        {/* Анимированные элементы */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute w-24 h-24 top-20 left-10 rounded-full bg-radial-gradient(circle, rgba(0, 217, 255, 0.3), transparent) floating-element"></div>
           <div
@@ -260,7 +275,6 @@ export default function NotFoundPage() {
         </div>
 
         <div className="container mx-auto px-4 max-w-7xl relative z-10">
-          {/* Код ошибки */}
           <div
             className={`text-center mt-12 mb-8 ${glitchActive ? "glitch" : ""}`}
           >
@@ -269,12 +283,10 @@ export default function NotFoundPage() {
             </div>
           </div>
 
-          {/* Сообщение об ошибке */}
           <h1 className="text-3xl md:text-4xl font-bold text-center mb-8">
             Страница не найдена
           </h1>
 
-          {/* Описание */}
           <div className="max-w-2xl mx-auto mb-12 text-center">
             <p className="text-lg text-text-dim">
               {typedText}
@@ -284,7 +296,6 @@ export default function NotFoundPage() {
             </p>
           </div>
 
-          {/* Действия */}
           <div className="flex flex-wrap justify-center gap-4 mb-12">
             <Link
               href="/"
@@ -309,7 +320,6 @@ export default function NotFoundPage() {
             </button>
           </div>
 
-          {/* Консоль с ошибкой */}
           <div className="max-w-3xl mx-auto mb-12">
             <div className="glass-card rounded-xl p-6 border border-glass-border">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-6 border-b border-glass-border">
@@ -341,10 +351,7 @@ export default function NotFoundPage() {
                   found
                 </div>
                 <div>
-                  <span className="text-accent-green">PATH:</span>{" "}
-                  {typeof window !== "undefined"
-                    ? window.location.pathname
-                    : "/unknown"}
+                  <span className="text-accent-green">PATH:</span> {currentPath}
                 </div>
                 <div>
                   <span className="text-accent-green">TIME:</span> {currentTime}
@@ -362,7 +369,6 @@ export default function NotFoundPage() {
             </div>
           </div>
 
-          {/* Популярные страницы */}
           <div className="max-w-4xl mx-auto mb-16">
             <h3 className="text-2xl font-bold text-center mb-8">
               Популярные страницы
