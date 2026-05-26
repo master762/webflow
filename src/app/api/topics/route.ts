@@ -56,7 +56,7 @@ export async function GET() {
   });
 
   if (user.roleId === 1 || user.roleId === 2) {
-    topics = topics.filter((topic) => {
+    topics = topics.filter((topic: any) => {
       if (topic.teacherId) {
         return topic.teacherId === user.teacherId;
       }
