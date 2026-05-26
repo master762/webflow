@@ -28,7 +28,7 @@ export async function GET() {
     orderBy: { id: "asc" },
   });
 
-  const topicsWithProjectId = topics.map((topic) => ({
+  const topicsWithProjectId = topics.map((topic: any) => ({
     ...topic,
     projectId: topic.project?.id || null,
   }));
