@@ -96,11 +96,11 @@ export default function AuthPage() {
       <div className="flex flex-col min-h-screen">
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="w-full max-w-4xl">
-            <div className="glass-card rounded-2xl overflow-hidden border border-glass-border shadow-neon-blue backdrop-blur-sm">
+            <div className="hero-animate glass-card rounded-2xl overflow-hidden border border-glass-border shadow-neon-blue backdrop-blur-sm">
               <div className="flex flex-col lg:flex-row">
                 {/* Левая часть - приветствие */}
                 <div className="lg:w-1/2 p-8 lg:p-12 bg-linear-to-br from-accent-blue/10 to-accent-purple/10">
-                  <h2 className="text-3xl lg:text-4xl font-bold mb-6 gradient-text">
+                  <h2 className="hero-animate text-3xl lg:text-4xl font-bold mb-6 gradient-text">
                     Присоединяйся к сообществу
                   </h2>
                   <p className="text-text-dim mb-8 leading-relaxed">
@@ -224,7 +224,7 @@ export default function AuthPage() {
 
                     <button
                       type="submit"
-                      className="w-full py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg hover:shadow-neon-purple hover:-translate-y-0.5 transition-all duration-300"
+                      className="btn-primary-glow w-full py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg"
                     >
                       Войти
                     </button>
@@ -420,7 +420,7 @@ export default function AuthPage() {
 
                     <button
                       type="submit"
-                      className="w-full py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg hover:shadow-neon-purple hover:-translate-y-0.5 transition-all duration-300"
+                      className="btn-primary-glow w-full py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg"
                     >
                       Зарегистрироваться
                     </button>

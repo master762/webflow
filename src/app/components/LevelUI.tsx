@@ -3,6 +3,22 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  validateLevelCode,
+  type RuleCheckResult,
+} from "@/lib/levelValidation";
+import type { RankProgress } from "@/lib/levelUtils";
+import {
+  isSoundEnabled,
+  setSoundEnabled,
+  playCyberWinSound,
+  playCyberErrorSound,
+} from "@/lib/soundSettings";
+import Confetti from "@/app/components/level/Confetti";
+import VictoryModal from "@/app/components/level/VictoryModal";
+import CodeEditor from "@/app/components/level/CodeEditor";
+import ComparePreview from "@/app/components/level/ComparePreview";
+import ValidationFeedback from "@/app/components/level/ValidationFeedback";
 
 type Level = {
   id: number;
@@ -23,28 +39,12 @@ type Message = {
   type: "success" | "error" | "info";
 };
 
-// Типы для правил валидации
-type CSSRule = {
-  selector?: string;
-  property?: string;
-  value?: string;
-  withinMedia?: string;
-  rule?: string;
-  inside?: string;
-};
-
-type HTMLRule = {
-  tag: string;
-  contentRequired?: boolean;
-};
-
-type JSRule = {
-  codePattern: string;
-};
-
-type Validation = {
-  type: "cssContains" | "htmlContains" | "jsContains" | "manual";
-  rules: (CSSRule | HTMLRule | JSRule)[];
+type CompleteResponse = {
+  success: boolean;
+  xpAwarded: number;
+  topicBonusXp: number;
+  completed: boolean;
+  rankProgress: RankProgress;
 };
 
 export default function LevelUI({
@@ -63,9 +63,30 @@ export default function LevelUI({
   const [messages, setMessages] = useState<Message[]>([]);
   const [showHint, setShowHint] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
+
+  const [validationFailures, setValidationFailures] = useState<
+    RuleCheckResult[]
+  >([]);
+  const [expectedHtml, setExpectedHtml] = useState(level.html);
+  const [expectedCss, setExpectedCss] = useState(level.css);
+  const [showCompare, setShowCompare] = useState(false);
+  const [activeArrowLine, setActiveArrowLine] = useState<number | null>(null);
+  const [arrowLabel, setArrowLabel] = useState("");
+
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [previewShake, setPreviewShake] = useState<"none" | "success" | "error">(
+    "none",
+  );
+  const [soundEnabled, setSoundEnabledState] = useState(true);
+  const [victoryData, setVictoryData] = useState<CompleteResponse | null>(null);
+
   const previewRef = useRef<HTMLIFrameElement>(null);
   const checkBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setSoundEnabledState(isSoundEnabled());
+  }, []);
 
   const showMessage = useCallback((text: string, type: Message["type"]) => {
     const id = Date.now();
@@ -117,11 +138,24 @@ export default function LevelUI({
   useEffect(() => {
     setHtmlCode(level.html);
     setCssCode(level.css);
+    setValidationFailures([]);
+    setShowCompare(false);
+    setActiveArrowLine(null);
+    setShowVictoryModal(false);
+    setShowConfetti(false);
+    setPreviewShake("none");
   }, [level]);
+
+  const highlightLines = validationFailures
+    .filter((f) => f.targetTab === activeTab)
+    .map((f) => f.line);
 
   const handleReset = () => {
     setHtmlCode(level.html);
     setCssCode(level.css);
+    setValidationFailures([]);
+    setShowCompare(false);
+    setActiveArrowLine(null);
     updatePreview();
     showMessage("Код сброшен к начальному состоянию", "info");
   };
@@ -137,7 +171,7 @@ export default function LevelUI({
     }
   };
 
-  const completeLevel = useCallback(async () => {
+  const completeLevel = useCallback(async (): Promise<CompleteResponse | null> => {
     try {
       const res = await fetch("/api/levels/complete", {
         method: "POST",
@@ -146,147 +180,109 @@ export default function LevelUI({
       });
       const data = await res.json();
       if (data.success) {
-        showMessage(`Уровень пройден! +${data.xpAwarded} XP`, "success");
-        return data.completed;
-      } else {
-        showMessage("Ошибка сохранения прогресса", "error");
-        return false;
+        return data as CompleteResponse;
       }
+      showMessage("Ошибка сохранения прогресса", "error");
+      return null;
     } catch (err) {
       console.error(err);
       showMessage("Ошибка сервера", "error");
-      return false;
+      return null;
     }
   }, [level.id, showMessage]);
 
-  const isSolutionCorrect = useCallback(() => {
-    if (!level.validation) {
-      console.warn("Нет правил проверки для уровня", level.id);
-      return false;
-    }
-    try {
-      const validation: Validation = JSON.parse(level.validation);
-      const type = validation.type;
+  const triggerPreviewShake = (type: "success" | "error") => {
+    setPreviewShake(type);
+    setTimeout(() => setPreviewShake("none"), 600);
+  };
 
-      if (type === "cssContains") {
-        return validation.rules.every((rule) => {
-          const {
-            selector,
-            property,
-            value,
-            withinMedia,
-            rule: mediaRule,
-            inside,
-          } = rule as CSSRule;
-          if (selector && property && value && !withinMedia) {
-            const regex = new RegExp(
-              `${selector}\\s*\\{[^}]*${property}\\s*:\\s*${value}[;\\s]`,
-              "i",
-            );
-            return regex.test(cssCode);
-          }
-          if (mediaRule && inside) {
-            const mediaRegex = new RegExp(
-              `${mediaRule}\\s*\\{[^}]*${inside}[^}]*\\}`,
-              "i",
-            );
-            return mediaRegex.test(cssCode);
-          }
-          if (selector && property && value && withinMedia) {
-            const mediaRegex = new RegExp(
-              `${withinMedia}\\s*\\{[^}]*${selector}\\s*\\{[^}]*${property}\\s*:\\s*${value}[;\\s][^}]*\\}[^}]*\\}`,
-              "i",
-            );
-            return mediaRegex.test(cssCode);
-          }
-          return false;
-        });
-      }
-
-      if (type === "htmlContains") {
-        return validation.rules.every((rule) => {
-          const { tag, contentRequired } = rule as HTMLRule;
-          if (tag) {
-            const tagRegex = new RegExp(`<${tag}[\\s>]`, "i");
-            const hasTag = tagRegex.test(htmlCode);
-            if (!hasTag) return false;
-            if (contentRequired) {
-              const contentRegex = new RegExp(
-                `<${tag}[^>]*>([^<]*)</${tag}>`,
-                "i",
-              );
-              const match = htmlCode.match(contentRegex);
-              return match && match[1] && match[1].trim().length > 0;
-            }
-            return true;
-          }
-          return false;
-        });
-      }
-
-      if (type === "jsContains") {
-        const scriptMatch = htmlCode.match(
-          /<script[^>]*>([\s\S]*?)<\/script>/i,
-        );
-        const jsCode = scriptMatch ? scriptMatch[1] : htmlCode;
-        return validation.rules.every((rule) => {
-          const { codePattern } = rule as JSRule;
-          if (codePattern) {
-            const regex = new RegExp(codePattern, "i");
-            return regex.test(jsCode);
-          }
-          return false;
-        });
-      }
-
-      if (type === "manual") {
-        return false;
-      }
-      return false;
-    } catch (e) {
-      console.error("Ошибка парсинга validation", e);
-      return false;
-    }
-  }, [cssCode, htmlCode, level.validation, level.id]);
+  const handleJumpToIssue = (tab: "html" | "css", line: number) => {
+    setActiveTab(tab);
+    const failure = validationFailures.find(
+      (f) => f.targetTab === tab && f.line === line,
+    );
+    setActiveArrowLine(line);
+    setArrowLabel(failure?.arrowLabel ?? "");
+  };
 
   const handleCheck = async () => {
     if (isChecking) return;
     setIsChecking(true);
+    setValidationFailures([]);
+    setShowCompare(false);
+    setActiveArrowLine(null);
 
-    setTimeout(async () => {
-      if (level.validation && JSON.parse(level.validation).type === "manual") {
-        showMessage(
-          "Это задание проверяется преподавателем. Отправьте ссылку на GitHub в нужное поле.",
-          "info",
-        );
-        setIsChecking(false);
-        return;
+    await new Promise((r) => setTimeout(r, 800));
+
+    if (level.validation) {
+      try {
+        const parsed = JSON.parse(level.validation);
+        if (parsed.type === "manual") {
+          showMessage(
+            "Это задание проверяется преподавателем. Отправьте ссылку на GitHub.",
+            "info",
+          );
+          setIsChecking(false);
+          return;
+        }
+      } catch {
+        /* continue */
+      }
+    }
+
+    const outcome = validateLevelCode(htmlCode, cssCode, level.validation);
+
+    if (outcome.allPassed) {
+      const data = await completeLevel();
+      if (data) {
+        setVictoryData(data);
+        setShowConfetti(true);
+        triggerPreviewShake("success");
+        playCyberWinSound();
+        setShowVictoryModal(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
+    } else {
+      setValidationFailures(outcome.results);
+      setExpectedHtml(outcome.expectedHtml);
+      setExpectedCss(outcome.expectedCss);
+      setShowCompare(true);
+
+      const first = outcome.results[0];
+      if (first) {
+        setActiveTab(first.targetTab);
+        setActiveArrowLine(first.line);
+        setArrowLabel(first.arrowLabel);
       }
 
-      const correct = isSolutionCorrect();
-      if (correct) {
-        await completeLevel();
-        if (nextLevelId !== null) {
-          router.push(`/level/${nextLevelId}`);
-        } else {
-          setShowCompletionModal(true);
-        }
-      } else {
-        showMessage(
-          "Пока не совсем правильно. Проверьте задание и попробуйте ещё раз.",
-          "error",
-        );
-        if (checkBtnRef.current) {
-          checkBtnRef.current.classList.add("animate-shake");
-          setTimeout(() => {
-            if (checkBtnRef.current) {
-              checkBtnRef.current.classList.remove("animate-shake");
-            }
-          }, 500);
-        }
+      triggerPreviewShake("error");
+      playCyberErrorSound();
+      showMessage(
+        `Не всё верно — исправьте ${outcome.results.length} ${outcome.results.length === 1 ? "пункт" : "пункта"}`,
+        "error",
+      );
+
+      if (checkBtnRef.current) {
+        checkBtnRef.current.classList.add("animate-shake");
+        setTimeout(() => {
+          checkBtnRef.current?.classList.remove("animate-shake");
+        }, 500);
       }
-      setIsChecking(false);
-    }, 1000);
+    }
+
+    setIsChecking(false);
+  };
+
+  const handleVictoryContinue = () => {
+    setShowVictoryModal(false);
+    if (nextLevelId !== null) {
+      router.push(`/level/${nextLevelId}`);
+    }
+  };
+
+  const handleSoundToggle = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+    setSoundEnabledState(enabled);
   };
 
   const handleRefreshPreview = () => {
@@ -331,43 +327,36 @@ export default function LevelUI({
   };
   const topicInfo = getTopicInfo();
 
-  const CompletionModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="glass-card rounded-2xl p-8 max-w-md mx-4 text-center border border-accent-purple shadow-2xl animate-slideIn">
-        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-accent-green/20 flex items-center justify-center">
-          <i className="fas fa-trophy text-5xl text-accent-yellow"></i>
-        </div>
-        <h3 className="text-2xl font-bold mb-2 gradient-text">Поздравляем!</h3>
-        <p className="text-text-dim mb-6">
-          Вы успешно завершили тему <strong>{level.title}</strong>!<br />
-          Получено <strong>{level.xp}</strong> XP и бонус 50 XP.
-        </p>
-        <Link
-          href="/topics"
-          className="inline-block px-6 py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple transition-all"
-        >
-          <i className="fas fa-book-open mr-2"></i>К списку тем
-        </Link>
-      </div>
-    </div>
-  );
+  const defaultRank: RankProgress = {
+    rankLevel: 1,
+    rankTitle: "Новичок",
+    totalXp: 0,
+    nextRankTitle: "Ученик",
+    nextRankXp: 100,
+    progressPercent: 0,
+    xpToNext: 100,
+  };
 
   return (
-    <div className="min-h-screen bg-primary-dark text-text-light">
-      {showCompletionModal && <CompletionModal />}
+    <div className="min-h-screen text-text-light">
+      <Confetti active={showConfetti} />
+
+      {victoryData && (
+        <VictoryModal
+          open={showVictoryModal}
+          levelTitle={level.title}
+          xpAwarded={victoryData.xpAwarded}
+          topicBonusXp={victoryData.topicBonusXp}
+          rankProgress={victoryData.rankProgress ?? defaultRank}
+          topicCompleted={victoryData.completed}
+          nextLevelId={nextLevelId}
+          onContinue={handleVictoryContinue}
+          soundEnabled={soundEnabled}
+          onSoundToggle={handleSoundToggle}
+        />
+      )}
 
       <style jsx global>{`
-        @keyframes pulse {
-          0% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.7;
-          }
-          100% {
-            opacity: 1;
-          }
-        }
         @keyframes shake {
           0%,
           100% {
@@ -397,90 +386,21 @@ export default function LevelUI({
             opacity: 1;
           }
         }
-        .animate-pulse {
-          animation: pulse 2s infinite;
-        }
         .animate-shake {
           animation: shake 0.5s;
-        }
-        .slide-in {
-          animation: slideIn 0.3s ease;
-        }
-        .bg-primary-dark {
-          background-color: #0a0a1a;
-        }
-        .bg-secondary-dark {
-          background-color: #13162b;
-        }
-        .text-text-light {
-          color: #e0e0e0;
-        }
-        .text-text-dim {
-          color: #8888aa;
-        }
-        .border-glass-border {
-          border-color: rgba(100, 100, 150, 0.2);
-        }
-        .glass-card {
-          background: rgba(19, 22, 43, 0.7);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(100, 100, 150, 0.2);
-        }
-        .gradient-text {
-          background: linear-gradient(135deg, #00d9ff, #a855f7);
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
-        }
-        .shadow-neon-green {
-          box-shadow: 0 0 10px rgba(0, 255, 100, 0.3);
-        }
-        .shadow-neon-purple {
-          box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
-        }
-        .text-accent-green {
-          color: #00ff88;
-        }
-        .text-accent-blue {
-          color: #00d9ff;
-        }
-        .text-accent-purple {
-          color: #a855f7;
-        }
-        .text-accent-yellow {
-          color: #fbbf24;
-        }
-        .text-accent-red {
-          color: #ff4444;
-        }
-        .bg-accent-green {
-          background-color: #00ff88;
-        }
-        .bg-accent-blue {
-          background-color: #00d9ff;
-        }
-        .bg-accent-purple {
-          background-color: #a855f7;
-        }
-        .bg-accent-red {
-          background-color: #ff4444;
-        }
-        .bg-linear-to-r {
-          background: linear-gradient(90deg, #00d9ff, #a855f7);
         }
       `}</style>
 
       {messages.map((msg) => (
         <div
           key={msg.id}
-          className={`fixed top-24 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+          className={`toast-slide-in fixed top-24 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
             msg.type === "success"
               ? "bg-accent-green/90 text-black border-l-4 border-accent-green"
               : msg.type === "error"
                 ? "bg-accent-red/90 text-white border-l-4 border-accent-red"
                 : "bg-accent-blue/90 text-black border-l-4 border-accent-blue"
           }`}
-          style={{ animation: "slideIn 0.3s ease" }}
         >
           <i
             className={`fas ${msg.type === "success" ? "fa-check-circle" : msg.type === "error" ? "fa-exclamation-circle" : "fa-info-circle"} mr-2`}
@@ -505,14 +425,23 @@ export default function LevelUI({
                   {topicInfo.title}
                 </span>
               </div>
-              <p className="text-text-dim mt-3 max-w-2xl">
-                {level.description}
-              </p>
+              <p className="text-text-dim mt-3 max-w-2xl">{level.description}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
               <div className="px-4 py-2 rounded-full bg-accent-green/10 text-accent-green border border-accent-green shadow-neon-green">
                 <i className="fas fa-bolt mr-2"></i>+{level.xp} XP
               </div>
+              <button
+                type="button"
+                onClick={() => handleSoundToggle(!soundEnabled)}
+                className="px-3 py-2 rounded-lg border border-glass-border text-text-dim hover:text-accent-blue hover:border-accent-blue transition-colors text-sm"
+                title={soundEnabled ? "Выключить звук" : "Включить звук"}
+              >
+                <i
+                  className={`fas ${soundEnabled ? "fa-volume-up" : "fa-volume-mute"} mr-1`}
+                />
+                Звук
+              </button>
             </div>
           </div>
         </div>
@@ -526,12 +455,14 @@ export default function LevelUI({
               </div>
               <div className="flex gap-3 flex-wrap">
                 <button
+                  type="button"
                   onClick={handleReset}
                   className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10"
                 >
                   <i className="fas fa-redo mr-2"></i>Сбросить
                 </button>
                 <button
+                  type="button"
                   onClick={handleHint}
                   className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10"
                 >
@@ -539,6 +470,7 @@ export default function LevelUI({
                 </button>
                 <button
                   ref={checkBtnRef}
+                  type="button"
                   onClick={handleCheck}
                   disabled={isChecking}
                   className="px-4 py-2 bg-linear-to-r from-accent-blue to-accent-purple text-white font-bold rounded-lg hover:shadow-neon-purple hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -557,27 +489,44 @@ export default function LevelUI({
             </div>
             <div className="flex bg-black/50 border-b border-glass-border">
               <button
+                type="button"
                 onClick={() => setActiveTab("html")}
                 className={`px-6 py-3 flex items-center gap-2 transition-all duration-300 ${activeTab === "html" ? "text-accent-blue bg-accent-blue/5 border-b-2 border-accent-blue" : "text-text-dim hover:text-text-light"}`}
               >
                 <i className="fab fa-html5"></i>index.html
+                {validationFailures.some((f) => f.targetTab === "html") && (
+                  <span className="w-2 h-2 rounded-full bg-accent-red" />
+                )}
               </button>
               <button
+                type="button"
                 onClick={() => setActiveTab("css")}
                 className={`px-6 py-3 flex items-center gap-2 transition-all duration-300 ${activeTab === "css" ? "text-accent-blue bg-accent-blue/5 border-b-2 border-accent-blue" : "text-text-dim hover:text-text-light"}`}
               >
                 <i className="fab fa-css3-alt"></i>style.css
+                {validationFailures.some((f) => f.targetTab === "css") && (
+                  <span className="w-2 h-2 rounded-full bg-accent-red" />
+                )}
               </button>
             </div>
-            <textarea
+
+            <CodeEditor
               value={activeTab === "html" ? htmlCode : cssCode}
-              onChange={(e) =>
-                activeTab === "html"
-                  ? setHtmlCode(e.target.value)
-                  : setCssCode(e.target.value)
+              onChange={(v) =>
+                activeTab === "html" ? setHtmlCode(v) : setCssCode(v)
               }
-              className="w-full h-96 bg-secondary-dark text-text-light p-4 font-mono text-sm resize-none focus:outline-none"
-              spellCheck="false"
+              highlightLines={highlightLines}
+              activeArrowLine={
+                validationFailures.some((f) => f.targetTab === activeTab)
+                  ? activeArrowLine
+                  : null
+              }
+              arrowLabel={arrowLabel}
+            />
+
+            <ValidationFeedback
+              failures={validationFailures}
+              onJumpTo={handleJumpToIssue}
             />
           </div>
 
@@ -587,19 +536,38 @@ export default function LevelUI({
                 <i className="fas fa-eye"></i>Предпросмотр результата
               </h3>
               <button
+                type="button"
                 onClick={handleRefreshPreview}
                 className="px-4 py-2 bg-black/30 border border-glass-border rounded-lg hover:bg-accent-blue/10"
               >
                 <i className="fas fa-sync-alt mr-2"></i>Обновить
               </button>
             </div>
-            <div className="h-[500px] bg-white rounded-lg overflow-hidden border-2 border-gray-200">
+            <div
+              className={`h-[280px] bg-white rounded-lg overflow-hidden border-2 border-gray-200 transition-transform ${
+                previewShake === "success"
+                  ? "preview-shake-success"
+                  : previewShake === "error"
+                    ? "preview-shake-error"
+                    : ""
+              }`}
+            >
               <iframe
                 ref={previewRef}
                 className="w-full h-full border-0"
                 title="Предпросмотр уровня"
               />
             </div>
+
+            {showCompare && validationFailures.length > 0 && (
+              <ComparePreview
+                userHtml={htmlCode}
+                userCss={cssCode}
+                expectedHtml={expectedHtml}
+                expectedCss={expectedCss}
+              />
+            )}
+
             <div className="mt-6 p-5 bg-secondary-dark/50 rounded-lg border-l-4 border-accent-blue">
               <h4 className="text-lg font-bold mb-3 text-accent-blue flex items-center gap-2">
                 <i className="fas fa-tasks"></i>Задание
@@ -611,6 +579,7 @@ export default function LevelUI({
                 className={`mt-4 p-4 rounded-lg transition-all duration-300 ${showHint ? "bg-accent-purple/10 border-l-4 border-accent-purple" : "bg-secondary-dark/30"}`}
               >
                 <button
+                  type="button"
                   onClick={handleHint}
                   className="w-full flex justify-between items-center text-left"
                 >

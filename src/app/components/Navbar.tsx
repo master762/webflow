@@ -27,7 +27,7 @@ export default function Navbar() {
   const showMainLinks = !isEmployer;
 
   return (
-    <nav className="sticky top-0 z-50 bg-[rgba(10,10,20,0.95)] backdrop-blur-sm border-b border-glass-border py-4 shadow-lg shadow-black/30">
+    <nav className="nav-enter sticky top-0 z-50 bg-[rgba(10,10,20,0.85)] backdrop-blur-md border-b border-glass-border py-4 shadow-lg shadow-black/30">
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
           {/* Logo */}
@@ -35,7 +35,7 @@ export default function Navbar() {
             href="/"
             className="flex items-center gap-3 text-2xl font-bold text-text-light no-underline"
           >
-            <i className="fas fa-code text-accent-blue shadow-neon-blue"></i>
+            <i className="fas fa-code text-accent-blue shadow-neon-blue logo-icon-pulse"></i>
             <span className="gradient-text">CodeLingo</span>
           </Link>
 

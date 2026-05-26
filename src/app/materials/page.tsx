@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import ScrollReveal from "@/app/components/ScrollReveal";
 import {
   getMaterialHref,
   materialCategories,
@@ -222,38 +223,24 @@ export default function MaterialsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx global>{`
-        @keyframes slideIn {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
-
+    <div className="min-h-screen text-text-light">
       {messages.map((msg) => (
         <div
           key={msg.id}
-          className={`fixed top-24 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+          className={`toast-slide-in fixed top-24 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
             msg.type === "success"
               ? "bg-accent-green/90 text-black border-l-4 border-accent-green"
               : msg.type === "error"
                 ? "bg-accent-red/90 text-white border-l-4 border-accent-red"
                 : "bg-accent-blue/90 text-black border-l-4 border-accent-blue"
           }`}
-          style={{ animation: "slideIn 0.3s ease" }}
         >
           {msg.text}
         </div>
       ))}
 
       <div className="container mx-auto px-4 max-w-7xl">
-        <div className="my-8 p-8 glass-card rounded-2xl text-center">
+        <ScrollReveal variant="fade-up" className="my-8 p-8 glass-card rounded-2xl text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">
             Учебные материалы
           </h1>
@@ -261,10 +248,10 @@ export default function MaterialsPage() {
             Единая сетка теории по HTML и CSS. Карточки берутся из общего списка
             материалов, поэтому новые статьи можно добавлять в одном месте.
           </p>
-        </div>
+        </ScrollReveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="glass-card rounded-xl p-6 hover:border-accent-blue transition-all duration-300">
+          <ScrollReveal variant="fade-left" delay={0} className="glass-card glass-card-interactive rounded-xl p-6 hover:border-accent-blue">
             <h3 className="text-lg font-bold mb-4 text-accent-blue flex items-center gap-2">
               <i className="fas fa-filter"></i> Тип материала
             </h3>
@@ -284,9 +271,9 @@ export default function MaterialsPage() {
                 </label>
               ))}
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="glass-card rounded-xl p-6 hover:border-accent-blue transition-all duration-300">
+          <ScrollReveal variant="fade-up" delay={80} className="glass-card glass-card-interactive rounded-xl p-6 hover:border-accent-blue">
             <h3 className="text-lg font-bold mb-4 text-accent-blue flex items-center gap-2">
               <i className="fas fa-signal"></i> Уровень сложности
             </h3>
@@ -306,9 +293,9 @@ export default function MaterialsPage() {
                 </label>
               ))}
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="glass-card rounded-xl p-6 hover:border-accent-blue transition-all duration-300">
+          <ScrollReveal variant="fade-right" delay={160} className="glass-card glass-card-interactive rounded-xl p-6 hover:border-accent-blue">
             <h3 className="text-lg font-bold mb-4 text-accent-blue flex items-center gap-2">
               <i className="fas fa-unlock"></i> Доступность
             </h3>
@@ -336,12 +323,12 @@ export default function MaterialsPage() {
                 </label>
               ))}
             </div>
-          </div>
+          </ScrollReveal>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
           <div className="lg:col-span-1">
-            <div className="glass-card rounded-xl p-6 sticky top-24">
+            <ScrollReveal variant="fade-left" className="glass-card rounded-xl p-6 sticky top-24">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <i className="fas fa-folder"></i> Категории
               </h3>
@@ -372,11 +359,11 @@ export default function MaterialsPage() {
                   </button>
                 ))}
               </div>
-            </div>
+            </ScrollReveal>
           </div>
 
           <div className="lg:col-span-3">
-            <div className="glass-card rounded-xl p-6 mb-6">
+            <ScrollReveal variant="fade-up" className="glass-card rounded-xl p-6 mb-6">
               <div className="flex flex-col md:flex-row gap-4 md:items-center">
                 <div className="flex-1 relative">
                   <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-text-dim"></i>
@@ -405,7 +392,7 @@ export default function MaterialsPage() {
                   </select>
                 </div>
               </div>
-            </div>
+            </ScrollReveal>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {paginatedMaterials.map((material, index) => {
@@ -413,16 +400,18 @@ export default function MaterialsPage() {
                 const isBookmarked = bookmarks.has(material.id);
 
                 return (
-                  <div
+                  <ScrollReveal
                     key={material.id}
-                    className={`glass-card rounded-xl overflow-hidden transition-all duration-300 flex flex-col h-full relative ${
+                    variant="fade-up"
+                    delay={Math.min(index * 80, 320)}
+                    className="h-full"
+                  >
+                  <div
+                    className={`glass-card glass-card-interactive rounded-xl overflow-hidden flex flex-col h-full relative ${
                       material.locked
                         ? "opacity-70 grayscale"
-                        : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-1"
+                        : "hover:border-accent-blue hover:shadow-neon-blue"
                     }`}
-                    style={{
-                      animation: `slideIn 0.5s ease ${index * 0.1}s both`,
-                    }}
                   >
                     {material.locked && (
                       <div className="absolute top-4 left-4 z-10">
@@ -537,6 +526,7 @@ export default function MaterialsPage() {
                       </div>
                     </div>
                   </div>
+                  </ScrollReveal>
                 );
               })}
             </div>

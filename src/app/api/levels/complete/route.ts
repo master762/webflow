@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { PrismaClient } from "@prisma/client";
-import { updateUserLevel } from "@/lib/levelUtils";
+import { getRankProgress, updateUserLevel } from "@/lib/levelUtils";
 import { checkAndUnlockAchievements } from "@/lib/achievements";
 
 const prisma = new PrismaClient();
@@ -101,10 +101,20 @@ export async function POST(req: NextRequest) {
   await updateUserLevel(user.id);
   await checkAndUnlockAchievements(user.id);
 
+  const updatedUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { xp: true, level: true, title: true },
+  });
+
+  const rankProgress = getRankProgress(updatedUser?.xp ?? user.xp);
+
   return NextResponse.json({
     success: true,
     xpAwarded,
+    topicBonusXp: completed && (!progressRecord || !progressRecord.completed) ? 50 : 0,
     completed,
     newProgress,
+    totalXp: updatedUser?.xp ?? user.xp,
+    rankProgress,
   });
 }

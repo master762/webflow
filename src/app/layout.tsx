@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/components/Footer";
+import AnimatedBackground from "@/app/components/AnimatedBackground";
 import Providers from "./providers";
 import SessionTracker from "@/app/components/SessionTracker";
 import "./globals.css";
@@ -30,10 +31,13 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
+        <AnimatedBackground />
         <Providers>
-          <Navbar />
-          {children}
-          <Footer />
+          <div className="page-content">
+            <Navbar />
+            {children}
+            <Footer />
+          </div>
           <SessionTracker />
         </Providers>
       </body>

@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-
+import { Topic } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
@@ -397,7 +397,9 @@ async function main() {
   ];
 
   for (const level of levels) {
-    const topic = dbTopics.find((t) => t.category === level.topic);
+    const topic = dbTopics.find(
+      (t: { category: string }) => t.category === level.topic,
+    );
     if (!topic) continue;
     await prisma.level.create({
       data: {

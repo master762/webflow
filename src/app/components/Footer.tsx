@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ScrollReveal from "@/app/components/ScrollReveal";
 
 export default function Footer() {
   const footerLinks = [
@@ -9,8 +10,8 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="bg-[rgba(10,10,20,0.95)] border-t border-glass-border py-8 mt-16">
-      <div className="container mx-auto px-4 max-w-7xl text-center">
+    <footer className="bg-[rgba(10,10,20,0.85)] backdrop-blur-md border-t border-glass-border py-8 mt-16">
+      <ScrollReveal variant="fade-up" className="container mx-auto px-4 max-w-7xl text-center">
         <div className="flex flex-wrap justify-center gap-6 mb-6">
           {footerLinks.map((link) => (
             <Link
@@ -25,7 +26,7 @@ export default function Footer() {
         <p className="text-text-dim">
           © {new Date().getFullYear()} CodeLingo. Все права защищены.
         </p>
-      </div>
+      </ScrollReveal>
     </footer>
   );
 }

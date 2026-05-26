@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import ScrollReveal from "@/app/components/ScrollReveal";
+import PageLoader from "@/app/components/PageLoader";
 
 interface TopicFromDB {
   id: number;
@@ -150,32 +152,32 @@ export default function Home() {
   };
 
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 max-w-7xl flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-accent-blue mb-4"></i>
-          <p className="text-text-dim">Загрузка...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
     <div className="container mx-auto px-4 max-w-7xl">
       {/* HERO */}
-      <section className="text-center my-16 py-10">
-        <h1 className="text-4xl md:text-5xl font-bold mb-6 gradient-text">
+      <section className="text-center my-16 py-10 relative">
+        <div
+          className="absolute inset-0 -z-10 pointer-events-none opacity-40"
+          aria-hidden
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90vw,520px)] h-48 bg-linear-to-r from-accent-blue/30 via-accent-purple/20 to-accent-blue/30 blur-3xl rounded-full" />
+        </div>
+
+        <h1 className="hero-animate text-4xl md:text-5xl font-bold mb-6 gradient-text">
           Изучай HTML/CSS как в игре
         </h1>
 
-        <p className="text-lg text-text-dim max-w-3xl mx-auto mb-8">
+        <p className="hero-animate hero-animate-delay-1 text-lg text-text-dim max-w-3xl mx-auto mb-8">
           Прокачивай навыки веб-разработки, проходя уровни, сражайся с боссами и
           отслеживай прогресс.
         </p>
 
         <Link
           href={isLoggedIn ? "/topics" : "/auth"}
-          className="inline-block px-8 py-4 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg shadow-lg hover:shadow-neon-purple hover:-translate-y-1 transition-all duration-300"
+          className="hero-animate hero-animate-delay-2 btn-primary-glow inline-block px-8 py-4 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg shadow-lg"
         >
           {isLoggedIn ? "Продолжить обучение" : "Начать обучение"}
         </Link>
@@ -185,10 +187,12 @@ export default function Home() {
         <>
           {/* ПРОГРЕСС */}
           <section className="my-12">
-            <h2 className="text-3xl font-bold mb-2">Текущий прогресс</h2>
-            <p className="text-text-dim mb-8">
-              Продолжай обучение с того места, где остановился
-            </p>
+            <ScrollReveal variant="fade-up">
+              <h2 className="text-3xl font-bold mb-2">Текущий прогресс</h2>
+              <p className="text-text-dim mb-8">
+                Продолжай обучение с того места, где остановился
+              </p>
+            </ScrollReveal>
 
             {regularTopics.length === 0 ? (
               <p className="text-text-dim text-center py-8">
@@ -196,16 +200,21 @@ export default function Home() {
               </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {regularTopics.slice(0, 4).map((topic) => {
+                {regularTopics.slice(0, 4).map((topic, index) => {
                   const progress = getProgress(topic.id);
                   const completed = isCompleted(progress);
                   const locked = isTopicLocked(topic);
 
                   return (
-                    <div
+                    <ScrollReveal
                       key={topic.id}
-                      className={`glass-card rounded-xl p-6 border flex flex-col transition-all duration-300 relative
-                        ${locked ? "opacity-70 grayscale" : "hover:border-accent-blue hover:shadow-neon-blue hover:-translate-y-2"}
+                      variant="fade-up"
+                      delay={index * 100}
+                      className="h-full"
+                    >
+                    <div
+                      className={`glass-card glass-card-interactive rounded-xl p-6 border flex flex-col h-full relative
+                        ${locked ? "opacity-70 grayscale" : "hover:border-accent-blue hover:shadow-neon-blue"}
                         ${completed ? "border-accent-green bg-accent-green/5 shadow-md" : "border-glass-border"}
                       `}
                     >
@@ -282,6 +291,7 @@ export default function Home() {
                         )}
                       </div>
                     </div>
+                    </ScrollReveal>
                   );
                 })}
               </div>
@@ -290,15 +300,21 @@ export default function Home() {
 
           {/* ДОСТИЖЕНИЯ */}
           <section className="my-16">
-            <h2 className="text-3xl font-bold mb-4">Последние достижения</h2>
-            <p className="text-text-dim mb-8">Ваши последние успехи</p>
+            <ScrollReveal variant="fade-up">
+              <h2 className="text-3xl font-bold mb-4">Последние достижения</h2>
+              <p className="text-text-dim mb-8">Ваши последние успехи</p>
+            </ScrollReveal>
 
             {unlockedAchievements.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {unlockedAchievements.map((achievement) => (
-                  <div
+                {unlockedAchievements.map((achievement, index) => (
+                  <ScrollReveal
                     key={achievement.id}
-                    className="p-4 rounded-xl border text-center transition-all duration-300 hover:border-accent-yellow bg-linear-to-br from-accent-blue/10 to-accent-purple/10"
+                    variant="scale"
+                    delay={index * 80}
+                  >
+                  <div
+                    className="achievement-shine p-4 rounded-xl border text-center transition-all duration-300 hover:border-accent-yellow hover:shadow-neon-purple bg-linear-to-br from-accent-blue/10 to-accent-purple/10 glass-card"
                   >
                     <div className="w-16 h-16 mx-auto rounded-full bg-linear-to-br from-accent-blue to-accent-purple flex items-center justify-center text-white text-2xl mb-3">
                       <i className={`fas ${achievement.icon}`} />
@@ -310,9 +326,11 @@ export default function Home() {
                       {achievement.description}
                     </p>
                   </div>
+                  </ScrollReveal>
                 ))}
               </div>
             ) : (
+              <ScrollReveal variant="fade-up">
               <div className="text-center py-12 glass-card rounded-xl border border-glass-border">
                 <i className="fas fa-trophy text-5xl text-text-dim mb-4"></i>
                 <p className="text-text-dim">
@@ -326,6 +344,7 @@ export default function Home() {
                   Начать обучение
                 </Link>
               </div>
+              </ScrollReveal>
             )}
           </section>
         </>

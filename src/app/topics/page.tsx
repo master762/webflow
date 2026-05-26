@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import ScrollReveal from "@/app/components/ScrollReveal";
 // Типы данных из БД
 type Difficulty = "beginner" | "intermediate" | "advanced" | "expert";
 type Category = "html" | "css" | "js" | "projects";
@@ -444,32 +445,18 @@ export default function TopicsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark text-text-light">
-      <style jsx global>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
-
+    <div className="min-h-screen text-text-light">
       {/* Toast-сообщения */}
       {messages.map((msg) => (
         <div
           key={msg.id}
-          className={`fixed top-24 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+          className={`toast-slide-in fixed top-24 right-5 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
             msg.type === "success"
               ? "bg-accent-green/90 text-black border-l-4 border-accent-green"
               : msg.type === "error"
                 ? "bg-accent-red/90 text-white border-l-4 border-accent-red"
                 : "bg-accent-blue/90 text-black border-l-4 border-accent-blue"
           }`}
-          style={{ animation: "slideIn 0.3s ease" }}
         >
           {msg.text}
         </div>
@@ -477,8 +464,8 @@ export default function TopicsPage() {
 
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Шапка со статистикой */}
-        <div className="my-8 p-8 glass-card rounded-2xl text-center border border-glass-border">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-linear-to-r from-accent-blue to-accent-purple bg-clip-text text-transparent">
+        <ScrollReveal variant="fade-up" className="my-8 p-8 glass-card rounded-2xl text-center border border-glass-border">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 gradient-text">
             Все темы для изучения
           </h1>
           <p className="text-lg text-text-dim max-w-3xl mx-auto mb-8">
@@ -488,7 +475,7 @@ export default function TopicsPage() {
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
-            <div className="p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-green transition-all duration-300 hover:-translate-y-1">
+            <div className="stat-card-glow p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-green transition-all duration-300 hover:-translate-y-1">
               <div
                 className="text-3xl font-bold text-accent-green stat-animate"
                 data-value={completedTopics}
@@ -497,7 +484,7 @@ export default function TopicsPage() {
               </div>
               <div className="text-sm text-text-dim">Завершено</div>
             </div>
-            <div className="p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-blue transition-all duration-300 hover:-translate-y-1">
+            <div className="stat-card-glow p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-blue transition-all duration-300 hover:-translate-y-1">
               <div
                 className="text-3xl font-bold text-accent-blue stat-animate"
                 data-value={inProgressTopics}
@@ -506,7 +493,7 @@ export default function TopicsPage() {
               </div>
               <div className="text-sm text-text-dim">В процессе</div>
             </div>
-            <div className="p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-purple transition-all duration-300 hover:-translate-y-1">
+            <div className="stat-card-glow p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-purple transition-all duration-300 hover:-translate-y-1">
               <div
                 className="text-3xl font-bold text-accent-purple stat-animate"
                 data-value={totalTopics}
@@ -515,7 +502,7 @@ export default function TopicsPage() {
               </div>
               <div className="text-sm text-text-dim">Всего тем</div>
             </div>
-            <div className="p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-yellow transition-all duration-300 hover:-translate-y-1">
+            <div className="stat-card-glow p-6 bg-secondary-dark/50 rounded-xl border border-glass-border hover:border-accent-yellow transition-all duration-300 hover:-translate-y-1">
               <div
                 className="text-3xl font-bold text-accent-yellow stat-animate"
                 data-value={overallProgress}
@@ -525,10 +512,10 @@ export default function TopicsPage() {
               <div className="text-sm text-text-dim">Общий прогресс</div>
             </div>
           </div>
-        </div>
+        </ScrollReveal>
 
         {/* Фильтры и поиск */}
-        <div className="glass-card rounded-xl p-6 border border-glass-border mb-8">
+        <ScrollReveal variant="fade-up" delay={100} className="glass-card rounded-xl p-6 border border-glass-border mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex flex-wrap gap-2">
               {filters.map((filter) => (
@@ -556,21 +543,25 @@ export default function TopicsPage() {
               />
             </div>
           </div>
-        </div>
+        </ScrollReveal>
 
         {/* Сетка карточек тем */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {filteredTopics.map((topic, index) => {
             const isProject = topic.category === "projects";
             return (
-              <div
+              <ScrollReveal
                 key={topic.id}
+                variant="fade-up"
+                delay={Math.min(index * 80, 400)}
+                className="h-full"
+              >
+              <div
                 className={`
-  glass-card rounded-xl p-6 border flex flex-col transition-all duration-300 relative
+  glass-card glass-card-interactive rounded-xl p-6 border flex flex-col h-full relative
   ${getCardStyle(topic)}
-  ${topic.locked ? "opacity-70 grayscale" : "hover:shadow-neon-blue hover:-translate-y-2"}
+  ${topic.locked ? "opacity-70 grayscale" : "hover:shadow-neon-blue hover:border-accent-blue/50"}
 `}
-                style={{ animation: `slideIn 0.5s ease ${index * 0.1}s both` }}
                 onClick={
                   topic.locked ? () => handleLockedTopicClick(topic) : undefined
                 }
@@ -700,18 +691,21 @@ export default function TopicsPage() {
                   )}
                 </div>
               </div>
+              </ScrollReveal>
             );
           })}
         </div>
       </div>
       {filteredTopics.length === 0 && (
-        <div className="text-center py-12 glass-card rounded-xl border border-glass-border">
+        <ScrollReveal variant="fade-up" className="container mx-auto px-4 max-w-7xl">
+        <div className="text-center py-12 glass-card rounded-xl border border-glass-border mb-12">
           <i className="fas fa-search text-4xl text-text-dim mb-4"></i>
           <h3 className="text-xl font-bold mb-2">Темы не найдены</h3>
           <p className="text-text-dim">
             Попробуйте изменить параметры фильтрации или очистить поиск
           </p>
         </div>
+        </ScrollReveal>
       )}
     </div>
   );

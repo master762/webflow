@@ -14,6 +14,7 @@ type Level = {
   css: string;
   hint?: string;
   xp: number;
+  validation?: string | null;
 };
 
 export default function LevelPage() {
