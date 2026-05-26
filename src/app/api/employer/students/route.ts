@@ -38,15 +38,14 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const formattedUsers = users.map((user) => {
-    const totalLessons = 0;
-    const completedLessons = 0;
+  const formattedUsers = users.map((user: any) => {
+    // Вычисляем прогресс (пример: 8 тем всего)
     const progressPercent =
       user.topicsCompleted > 0 ? (user.topicsCompleted / 8) * 100 : 0;
 
     const projects = user.projectSubmissions
-      .filter((sub) => sub.status === "reviewed")
-      .map((sub) => ({
+      .filter((sub: any) => sub.status === "reviewed")
+      .map((sub: any) => ({
         id: sub.id,
         title: sub.project.topic.title,
         repoLink: sub.repoLink,
@@ -65,6 +64,8 @@ export async function GET() {
       topicsCompleted: user.topicsCompleted,
       streak: user.streak,
       progressPercent: Math.round(progressPercent),
+      roleId: user.roleId,
+      roleName: user.role.name,
       projects,
     };
   });
