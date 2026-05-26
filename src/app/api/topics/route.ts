@@ -64,7 +64,7 @@ export async function GET() {
     });
   }
 
-  const topicsWithData = topics.map((topic) => ({
+  const topicsWithData = topics.map((topic: any) => ({
     ...topic,
     projectId: topic.project?.id || null,
     submission: topic.project?.submissions?.[0] || null,
