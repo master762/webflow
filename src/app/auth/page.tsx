@@ -204,58 +204,12 @@ export default function AuthPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          className="w-4 h-4 accent-accent-blue"
-                        />
-                        <span className="text-text-dim">Запомнить меня</span>
-                      </label>
-                      <button
-                        type="button"
-                        className="text-accent-blue hover:text-accent-blue/80 transition-colors duration-300"
-                      >
-                        Забыли пароль?
-                      </button>
-                    </div>
-
                     <button
                       type="submit"
                       className="btn-primary-glow w-full py-3 bg-linear-to-r from-accent-blue to-accent-purple text-white font-semibold rounded-lg"
                     >
                       Войти
                     </button>
-
-                    <div className="relative my-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-glass-border"></div>
-                      </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-primary-dark text-text-dim">
-                          или войти с помощью
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        type="button"
-                        className="py-3 border border-glass-border rounded-lg flex items-center justify-center space-x-2 hover:border-accent-blue hover:bg-accent-blue/5 transition-all duration-300 text-text-dim hover:text-text-light"
-                      >
-                        <i className="fab fa-google text-red-400"></i>
-                        <span>Google</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="py-3 border border-glass-border rounded-lg flex items-center justify-center space-x-2 hover:border-accent-blue hover:bg-accent-blue/5 transition-all duration-300 text-text-dim hover:text-text-light"
-                      >
-                        <i className="fab fa-github"></i>
-                        <span>GitHub</span>
-                      </button>
-                    </div>
 
                     <div className="text-center text-text-dim">
                       Нет аккаунта?{" "}
@@ -424,34 +378,6 @@ export default function AuthPage() {
                     >
                       Зарегистрироваться
                     </button>
-
-                    <div className="relative my-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-glass-border"></div>
-                      </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-primary-dark text-text-dim">
-                          или зарегистрироваться с помощью
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        type="button"
-                        className="py-3 border border-glass-border rounded-lg flex items-center justify-center space-x-2 hover:border-accent-blue hover:bg-accent-blue/5 transition-all duration-300 text-text-dim hover:text-text-light"
-                      >
-                        <i className="fab fa-google text-red-400"></i>
-                        <span>Google</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="py-3 border border-glass-border rounded-lg flex items-center justify-center space-x-2 hover:border-accent-blue hover:bg-accent-blue/5 transition-all duration-300 text-text-dim hover:text-text-light"
-                      >
-                        <i className="fab fa-github"></i>
-                        <span>GitHub</span>
-                      </button>
-                    </div>
 
                     <div className="text-center text-text-dim">
                       Уже есть аккаунт?{" "}
